@@ -8,25 +8,22 @@ import audioop
 import pyaudio
 import sys
 
-def listenForSound(inputDevice):
+def listenForSound(inputDevice, threshold):
     chunk = 1024
     FORMAT = pyaudio.paInt16
     CHANNELS = 1
     RATE = 44100
     RECORD_SECONDS = 5
     
-    threshold = 10 
-    max_value = 0
-    
     p = pyaudio.PyAudio()
     
     stream = p.open(format=FORMAT,
-	            channels=CHANNELS, 
-	            rate=RATE, 
-	            input=True,
-	            output=True,
-	            input_device_index=inputDevice,
-	            frames_per_buffer=chunk)
+                channels=CHANNELS, 
+                rate=RATE, 
+                input=True,
+                output=True,
+                input_device_index=inputDevice,
+                frames_per_buffer=chunk)
 
     print "* recording"
     while True:
@@ -34,8 +31,8 @@ def listenForSound(inputDevice):
         # check level against threshold, you'll have to write getLevel()
         rms = audioop.rms(data, 2)  #width=2 for format=paInt16
         print rms
-        if rms > THRESHOLD:
-	    break
+        if rms > threshold:
+           break
 
     print "* done"
 
