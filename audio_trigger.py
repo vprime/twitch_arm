@@ -1,6 +1,6 @@
 #!/usr/bin/python
 # 
-# Sound Triggering Tests
+# Sound Trigger
 # Refrence: https://stackoverflow.com/questions/2668442/detect-and-record-a-sound-with-python
 # 
 
@@ -8,12 +8,46 @@ import audioop
 import pyaudio
 import sys
 
-def listenForSound(inputDevice, threshold):
+def calibrate(testAction):
+    getSoundOptions()
+    device = input("Enter Input Device id: ")
+    ## Need to find the mode and upper range
+    ## Listen on sound, store RMS values in array
+    ## run till testAction returns true
+    rmsData = []
     chunk = 1024
     FORMAT = pyaudio.paInt16
     CHANNELS = 1
     RATE = 44100
-    RECORD_SECONDS = 5
+    
+    p = pyaudio.PyAudio()
+    
+    stream = p.open(format=FORMAT,
+                channels=CHANNELS, 
+                rate=RATE, 
+                input=True,
+                output=True,
+                input_device_index=device,
+                frames_per_buffer=chunk)
+
+    testComplete = False
+    while not testComplete:
+        data = stream.read(chunk)
+        # check level against threshold, you'll have to write getLevel()
+        rms = audioop.rms(data, 2)  #width=2 for format=paInt16
+        rmsData.append(rms)
+        testComplete = 
+
+    stream.stop_stream()
+    stream.close()
+    p.terminate()
+
+
+def runOnSound(inputDevice, threshold, callback):
+    chunk = 1024
+    FORMAT = pyaudio.paInt16
+    CHANNELS = 1
+    RATE = 44100
     
     p = pyaudio.PyAudio()
     
@@ -25,16 +59,13 @@ def listenForSound(inputDevice, threshold):
                 input_device_index=inputDevice,
                 frames_per_buffer=chunk)
 
-    print "* recording"
     while True:
         data = stream.read(chunk)
         # check level against threshold, you'll have to write getLevel()
         rms = audioop.rms(data, 2)  #width=2 for format=paInt16
-        print rms
         if rms > threshold:
-           break
-
-    print "* done"
+            callback()
+            break
 
     stream.stop_stream()
     stream.close()
