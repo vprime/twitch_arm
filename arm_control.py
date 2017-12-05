@@ -39,8 +39,10 @@ import time
 import audioop
 import pyaudio
 
-haltedCW = []
-haltedCCW = []
+halted = {
+	"1":[],
+	"2":[]
+}
 
 inputDevice = 0
 threshold = 2000
@@ -80,6 +82,7 @@ def runTilTimeOrNoise(time, motor, action):
         # check level against threshold, you'll have to write getLevel()
         rms = audioop.rms(data, 2)  #width=2 for format=paInt16
         if rms > threshold:
+        	halted[action].append(motor)
             break
     stop(motor)
     stream.stop_stream()
@@ -90,23 +93,23 @@ def runTilTimeOrNoise(time, motor, action):
 """ To roate the motor in clockwise direction """
 def move_clockwise(motor, time):
 	# Check for halt, and disallow running
-	if motor in haltedCW:
+	if motor in halted["1"]:
 		print "Unable to comply, motor at limit."
 		return
 	runTilTimeOrNoise(time, motor, "1")
 	# Clear opposing halt
-	if motor in haltedCCW: haltedCCW.remove(motor)
+	if motor in halted["2"]: halted["2"].remove(motor)
 
 
 """ To roate the motor in anti-clockwise direction """
 def move_anti_clockwise(motor, time):
 	# Check for halt, and disallow running
-	if motor in haltedCCW:
+	if motor in halted["2"]:
 		print "Unable to comply, motor at limit."
 		return
 	runTilTimeOrNoise(time, motor, "2")
 	# Clear opposing halt
-	if motor in haltedCW: haltedCW.remove(motor)
+	if motor in halted["1"]: halted["1"].remove(motor)
 
 
 """ To stop the current activity """
