@@ -55,15 +55,13 @@ def find_usb_device():
                 if fnmatch.fnmatch(file, '*:*'):
                         return file
 
-
+""" Run the motor till it makes a noise"""
 def runTilTimeOrNoise(time, motor, action):
     chunk = 1024
     FORMAT = pyaudio.paInt16
     CHANNELS = 1
     RATE = 44100
-    
     p = pyaudio.PyAudio()
-    
     stream = p.open(format=FORMAT,
                 channels=CHANNELS, 
                 rate=RATE, 
@@ -72,11 +70,9 @@ def runTilTimeOrNoise(time, motor, action):
                 input_device_index=inputDevice,
                 frames_per_buffer=chunk)
     end = time.time() + time
-
-	fd= open(motor, "w")
+	fd = open(motor, "w")
 	fd.write(action)
 	fd.close()
-
     while time.time() < end:
         data = stream.read(chunk)
         # check level against threshold, you'll have to write getLevel()
