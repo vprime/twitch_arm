@@ -35,11 +35,14 @@ import os
 import fnmatch
 import sys
 import time
+from pprint import pprint
 
 import audioop
 import pyaudio
 
 import thread
+
+from pynput import keyboard
 
 class Arm:
     halted = {
@@ -47,35 +50,36 @@ class Arm:
         "2":[]
     }
     running = []
-
-    inputDevice = 0
-    threshold = 2000
     chunk = 1024
     listening = True
+
+    robotic_arm_path= ""
 
     """ Locate the sysfs entry corresponding to USB Robotic ARM """
     def find_usb_device(self):
         for file in os.listdir('/sys/bus/usb/drivers/robotic_arm/'):
                     if fnmatch.fnmatch(file, '*:*'):
+                            self.robotic_arm_path = "/sys/bus/usb/drivers/robotic_arm/"+ file + "/"
                             return file
 
-    def setupAudioStream(self):
+    def setupAudioStream(self, inputDevice, threshold):
         FORMAT = pyaudio.paInt16
         CHANNELS = 1
-        RATE = 8000
+        RATE = 44100
         p = pyaudio.PyAudio()
         stream = p.open(format=FORMAT,
                     channels=CHANNELS, 
                     rate=RATE, 
                     input=True,
                     output=True,
+                    input_device_index=inputDevice,
                     frames_per_buffer=self.chunk)
         self.listening = True
         while self.listening:
             data = stream.read(self.chunk, exception_on_overflow = False)
             rms = audioop.rms(data, 2)  #width=2 for format=paInt16
-            print("RMS: " + str(rms))
-            if rms > self.threshold:
+            if rms > threshold:
+                print("RMS: " + str(rms))
                 self.stopRunningMotors()
         stream.stop_stream()
         stream.close()
@@ -83,8 +87,8 @@ class Arm:
 
     def stopRunningMotors(self):
         for motor in self.running:
-            self.halted[motor[1]].append(motor[0])
             self.stop(motor[0])
+            self.halted[motor[1]].append(motor[0])
 
     """ Run the motor till it makes a noise"""
     def runTilTime(self, sec, motor, action):
@@ -96,27 +100,35 @@ class Arm:
 
     """ To roate the motor in clockwise direction """
     def move_clockwise(self, motor, sec):
+        motor = robotic_arm_path + motor
+        # Clear opposing halt
+        self.clear_halt(motor, "2")
         # Check for halt, and disallow running
         if motor in self.halted["1"]:
             print "Unable to comply, motor at limit."
+            pprint(self.halted)
             return
         self.running.append([motor, "1"])
         self.runTilTime(sec, motor, "1")
-        # Clear opposing halt
-        if motor in self.halted["2"]: self.halted["2"].remove(motor)
 
 
     """ To roate the motor in anti-clockwise direction """
     def move_anti_clockwise(self, motor, sec):
+        motor = robotic_arm_path + motor
+        # Clear opposing halt
+        self.clear_halt(motor, "1")
         # Check for halt, and disallow running
         if motor in self.halted["2"]:
             print "Unable to comply, motor at limit."
+            pprint(self.halted)
             return
         self.running.append([motor, "2"])
         self.runTilTime(sec, motor, "2")
-        # Clear opposing halt
-        if motor in self.halted["1"]: self.halted["1"].remove(motor)
 
+    def clear_halt(self, motor, action):
+        pprint(self.halted[action])
+        self.halted[action] = filter(lambda item: item != motor, self.halted[action])
+        pprint(self.halted[action])
 
     """ To stop the current activity """
     def stop(self, device):
@@ -128,20 +140,67 @@ class Arm:
                 self.running.remove(key)
         
     """ To switch on LED in Robotic ARM """
-    def led_on(self, led):
+    def led_on(self):
+        led = robotic_arm_path + "led"
         fd= open(led, "w")
         fd.write("1")
         fd.close()
 
-    def led_off(self, led):
+    def led_off(self):
+        led = robotic_arm_path + "led"
         fd= open(led, "w")
         fd.write("0")
         fd.close()
 
+    def getSoundOptions(self):
+        p = pyaudio.PyAudio()
+        info = p.get_host_api_info_by_index(0)
+        numdevices = info.get('deviceCount')
+        for i in range(0, numdevices):
+                if (p.get_device_info_by_host_api_device_index(0, i).get('maxInputChannels')) > 0:
+                    print "Input Device id ", i, " - ", p.get_device_info_by_host_api_device_index(0, i).get('name')
+
+    def on_press(self, key):
+        try:
+            print('alphanumeric key {0} pressed'.format(
+                key.char))
+            time = 2
+            if key.char == "1":
+                self.led_on()
+            if key.char == "q":
+                self.move_anti_clockwise("basemotor", time)
+            if key.char == "w":
+                self.move_clockwise("basemotor", time)
+            if key.char == "a":
+                self.move_anti_clockwise("gripmotor", time)
+            if key.char == "s":
+                self.move_clockwise("gripmotor", time)
+            if key.char == "e":
+                self.move_anti_clockwise("motor2", time)
+            if key.char == "r":
+                self.move_clockwise("motor2", time)
+            if key.char == "d":
+                self.move_anti_clockwise("motor3", time)
+            if key.char == "f":
+                self.move_clockwise("motor3", time)
+            if key.char == "c":
+                self.move_anti_clockwise("motor4", time)
+            if key.char == "v":
+                self.move_clockwise("motor4", time)
+        except AttributeError:
+            print('special key {0} pressed'.format(
+                key))
+
+    def on_release(self, key):
+        print('{0} released'.format(
+            key))
+        if key == keyboard.Key.esc:
+            # Stop listener
+            return False
+
 if __name__ == '__main__':
     arm = Arm()
     usb_dev_name = arm.find_usb_device()
-    audioThread = thread.start_new_thread(arm.setupAudioStream,())
 
     if ( usb_dev_name == None):
         print "Please ensure that robotic_arm module is loaded "
@@ -149,9 +208,18 @@ if __name__ == '__main__':
         print " and switched on the Robotic ARM device"
         sys.exit(-1)
 
-    # Path for the robotic arm sysfs entries
-    robotic_arm_path= "/sys/bus/usb/drivers/robotic_arm/"+ usb_dev_name + "/"
+    arm.getSoundOptions()
+    inputDevice = raw_input("Enter device ID: ")
+    threshold = raw_input("Threshold is: ")
+    audioThread = thread.start_new_thread(arm.setupAudioStream,(int(inputDevice), int(threshold)))
 
+    # Path for the robotic arm sysfs entries
+
+    robotic_arm_path= "/sys/bus/usb/drivers/robotic_arm/"+ usb_dev_name + "/"
+    with keyboard.Listener(on_press=arm.on_press, on_release=arm.on_release) as listener:
+        listener.join()
+    """
+    
     # Switch on and off the LED in Robotic arm
     print "LED control"
     led= robotic_arm_path+"led"
@@ -193,3 +261,7 @@ if __name__ == '__main__':
     arm.move_clockwise(shoulder, 1)
     arm.move_anti_clockwise(shoulder, 1)
     arm.stop(shoulder)
+
+    # Disconnect the audio
+    arm.listening = False
+    """
