@@ -29,6 +29,7 @@ import datetime
 import socket
 import select
 import re
+from arm_control import Arm
 
 ''' Change the following settings if you wish to run the program '''
 channels = [
@@ -81,7 +82,9 @@ def getmsg(msg):
             ''' PRINT WHISPER TO CONSOLE '''
             print('*WHISPER* '+whisper[0]+': '+whisper[2])
 
-
+def command(cmd):
+    if(cmd == "!ping"):
+        sendmsg(channel, "Pong!")
 
 
 # Connect to the server using the provided details
@@ -127,8 +130,6 @@ while True:
 
         ''' DISPLAY MESSAGE IN SHELL '''
         getmsg(msg)
-        #print(msg)
-
 
         # ANYTHING TO DO WITH CHAT FROM CHANNELS
         ''' GET THE INFO FROM THE SERVER '''
@@ -141,8 +142,7 @@ while True:
                 channel = msg_edit[1].split(' ',2)[2][:-1] # Channel
 
                 msg_split = str.split(message)
-                
-
+                command(msg_split[0])
                         
         # ANYTHING TO DO WITH WHISPERS RECIEVED FROM USERS
         check = re.findall('@(.*).tmi.twitch.tv WHISPER (.*) :(.*)',msg)

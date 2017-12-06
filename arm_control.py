@@ -100,7 +100,7 @@ class Arm:
 
     """ To roate the motor in clockwise direction """
     def move_clockwise(self, motor, sec):
-        motor = robotic_arm_path + motor
+        motor = self.robotic_arm_path + motor
         # Clear opposing halt
         self.clear_halt(motor, "2")
         # Check for halt, and disallow running
@@ -114,7 +114,7 @@ class Arm:
 
     """ To roate the motor in anti-clockwise direction """
     def move_anti_clockwise(self, motor, sec):
-        motor = robotic_arm_path + motor
+        motor = self.robotic_arm_path + motor
         # Clear opposing halt
         self.clear_halt(motor, "1")
         # Check for halt, and disallow running
@@ -198,24 +198,25 @@ class Arm:
             # Stop listener
             return False
 
+    def setup(self):
+        usb_dev_name = self.find_usb_device()
+
+        if ( usb_dev_name == None):
+            print "Please ensure that robotic_arm module is loaded "
+            print " Also ensure that you have connected the robotic arm "
+            print " and switched on the Robotic ARM device"
+            sys.exit(-1)
+
+        self.getSoundOptions()
+        inputDevice = raw_input("Enter device ID: ")
+        threshold = raw_input("Threshold is: ")
+        audioThread = thread.start_new_thread(self.setupAudioStream,(int(inputDevice), int(threshold)))
+
 if __name__ == '__main__':
     arm = Arm()
-    usb_dev_name = arm.find_usb_device()
-
-    if ( usb_dev_name == None):
-        print "Please ensure that robotic_arm module is loaded "
-        print " Also ensure that you have connected the robotic arm "
-        print " and switched on the Robotic ARM device"
-        sys.exit(-1)
-
-    arm.getSoundOptions()
-    inputDevice = raw_input("Enter device ID: ")
-    threshold = raw_input("Threshold is: ")
-    audioThread = thread.start_new_thread(arm.setupAudioStream,(int(inputDevice), int(threshold)))
+    arm.setup()
 
     # Path for the robotic arm sysfs entries
-
-    robotic_arm_path= "/sys/bus/usb/drivers/robotic_arm/"+ usb_dev_name + "/"
     with keyboard.Listener(on_press=arm.on_press, on_release=arm.on_release) as listener:
         listener.join()
     """
