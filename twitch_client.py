@@ -29,15 +29,13 @@ import datetime
 import socket
 import select
 import re
+import config
 from arm_control import Arm
 
 ''' Change the following settings if you wish to run the program '''
-channels = [
-    'CHANNEL_NAME',
-    'ANOTHER_CHANNEL_NAME'
-    ]
-username = 'USERNAME'
-oauth = 'OAUTH_TOKEN'
+channels = []
+username = ''
+oauth = ''
 
 # Definitions to use while connected
 def ping():
@@ -82,82 +80,112 @@ def getmsg(msg):
             ''' PRINT WHISPER TO CONSOLE '''
             print('*WHISPER* '+whisper[0]+': '+whisper[2])
 
-def command(cmd):
+def command(cmd, arm):
     if(cmd == "!ping"):
         sendmsg(channel, "Pong!")
+    if(cmd == "!light on"):
+        arm.led_on()
+    if(cmd == "!light off"):
+        arm.led_off()
+    if(cmd == "!left"):
+        arm.move_anti_clockwise("basemotor", 2)
+    if(cmd == "!right"):
+        arm.move_clockwise("basemotor", 2)
+    if(cmd == "!grab"):
+        arm.move_clockwise("gripmotor", 1.8)
+    if(cmd == "!drop"):
+        arm.move_anti_clockwise("gripmotor", 1.8)
+    if(cmd == "!wrist down"):
+        arm.move_anti_clockwise("motor2", 2)
+    if(cmd == "!wrist up"):
+        arm.move_clockwise("motor2", 2)
+    if(cmd == "!elbow down"):
+        arm.move_anti_clockwise("motor3", 1.5)
+    if(cmd == "!elbow up"):
+        arm.move_clockwise("motor3", 2)
+    if(cmd == "!shoulder down"):
+        arm.move_anti_clockwise("motor4", 1.5)
+    if(cmd == "!shoulder up"):
+        arm.move_clockwise("motor4", 2)
 
+if __name__ == '__main__':
+    arm = Arm()
+    arm.setup(config.audioDevice, config.threshold)
+    channels = config.channels
+    username = config.username
+    oauth = config.oauth
 
-# Connect to the server using the provided details
-socks = [socket.socket(),socket.socket()]
-''' Connect to the server using port 6667 & 443 '''
-socks[0].connect(('irc.twitch.tv',6667))
-#socks[1].connect(('GROUP_CHAT_IP',GROUP_CHAT_PORT))
+    # Connect to the server using the provided details
+    socks = [socket.socket()]
+    ''' Connect to the server using port 6667 & 443 '''
+    socks[0].connect(('irc.chat.twitch.tv',6667))
+    #socks[1].connect(('GROUP_CHAT_IP',GROUP_CHAT_PORT))
 
-'''Authenticate with the server '''
-socks[0].send('PASS '+oauth+'\n')
-#socks[1].send('PASS OAUTH_TOKEN\n')
-''' Assign the client with the nick '''
-socks[0].send('NICK '+username+'\n')
-#socks[1].send('NICK USER\n')
+    '''Authenticate with the server '''
+    socks[0].send('PASS '+oauth+'\n')
+    #socks[1].send('PASS OAUTH_TOKEN\n')
+    ''' Assign the client with the nick '''
+    socks[0].send('NICK '+username+'\n')
+    #socks[1].send('NICK USER\n')
+    ''' Join the specified channel '''
+    for val in channels:
+        socks[0].send('JOIN #'+val+'\n')
+    print(socks[0].recv(2048))
+    #socks[1].send('JOIN GROUP_CHAT_CHANNEL\n')
 
-''' Join the specified channel '''
-for val in channels:
-    socks[0].send('JOIN #'+val+'\n')
-#socks[1].send('JOIN GROUP_CHAT_CHANNEL\n')
+    ''' Send special requests to the server '''
+    # Used to recieve and send whispers!
+    #socks[1].send('CAP REQ :twitch.tv/commands\n')
 
-''' Send special requests to the server '''
-# Used to recieve and send whispers!
-#socks[1].send('CAP REQ :twitch.tv/commands\n')
+    print('Connected to irc.twitch.tv on port 6667')
+    print('USER: '+username)
+    print('OAUTH: oauth:'+'*'*30)
+    print('\n')
 
-print('Connected to irc.twitch.tv on port 6667')
-print('USER: '+username)
-print('OAUTH: oauth:'+'*'*30)
-print('\n')
+    temp = 0
+    while True:
+        (sread,swrite,sexc) = select.select(socks,socks,[],120)
+        for sock in sread:    
+            ''' Receive data from the server '''
+            msg = sock.recv(2048)
+            if(msg == ''):
+                temp + 1
+                if(temp > 5):
+                    print('Connection might have been terminated')
+        
+            ''' Remove any linebreaks from the message '''
+            msg = msg.strip('\n\r')
 
-temp = 0
-while True:
-    (sread,swrite,sexc) = select.select(socks,socks,[],120)
-    for sock in sread:    
-        ''' Receive data from the server '''
-        msg = sock.recv(2048)
-        if(msg == ''):
-            temp + 1
-            if(temp > 5):
-                print('Connection might have been terminated')
-    
-        ''' Remove any linebreaks from the message '''
-        msg = msg.strip('\n\r')
+            ''' DISPLAY MESSAGE IN SHELL '''
+            getmsg(msg)
 
-        ''' DISPLAY MESSAGE IN SHELL '''
-        getmsg(msg)
+            # ANYTHING TO DO WITH CHAT FROM CHANNELS
+            ''' GET THE INFO FROM THE SERVER '''
+            check = re.findall('@(.*).tmi.twitch.tv PRIVMSG (.*) :(.*)',msg)
+            if(len(check) > 0):
+                msg_edit = msg.split(':',2)
+                if(len(msg_edit) > 2):
+                    user = msg_edit[1].split('!',1)[0] # User
+                    message = msg_edit[2] # Message
+                    channel = msg_edit[1].split(' ',2)[2][:-1] # Channel
+                    #print(message)
+                    #msg_split = str.split(message)
+                    command(message, arm)
+                            
+            # ANYTHING TO DO WITH WHISPERS RECIEVED FROM USERS
+            check = re.findall('@(.*).tmi.twitch.tv WHISPER (.*) :(.*)',msg)
+            if(len(check) > 0):
+                msg_edit = msg.split(':',2)
+                if(len(msg) > 2):
+                    user = msg_edit[1].split('!',1)[0] # User
+                    message = msg_edit[2] # Message
+                    channel = msg_edit[1].split(' ',2)[2][:-1] # Channel
 
-        # ANYTHING TO DO WITH CHAT FROM CHANNELS
-        ''' GET THE INFO FROM THE SERVER '''
-        check = re.findall('@(.*).tmi.twitch.tv PRIVMSG (.*) :(.*)',msg)
-        if(len(check) > 0):
-            msg_edit = msg.split(':',2)
-            if(len(msg_edit) > 2):
-                user = msg_edit[1].split('!',1)[0] # User
-                message = msg_edit[2] # Message
-                channel = msg_edit[1].split(' ',2)[2][:-1] # Channel
+                    whis_split = str.split(message)
+                                   
+     
 
-                msg_split = str.split(message)
-                command(msg_split[0])
-                        
-        # ANYTHING TO DO WITH WHISPERS RECIEVED FROM USERS
-        check = re.findall('@(.*).tmi.twitch.tv WHISPER (.*) :(.*)',msg)
-        if(len(check) > 0):
-            msg_edit = msg.split(':',2)
-            if(len(msg) > 2):
-                user = msg_edit[1].split('!',1)[0] # User
-                message = msg_edit[2] # Message
-                channel = msg_edit[1].split(' ',2)[2][:-1] # Channel
-
-                whis_split = str.split(message)
-                               
- 
-
-        ''' Respond to server pings '''
-        if msg.find('PING :') != -1:
-            print('PING: tmi.twitch.tv > Client')
-ping()
+            ''' Respond to server pings '''
+            if msg.find('PING :') != -1:
+                print('PING: tmi.twitch.tv > Client')
+    ping()

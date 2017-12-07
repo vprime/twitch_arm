@@ -141,13 +141,13 @@ class Arm:
         
     """ To switch on LED in Robotic ARM """
     def led_on(self):
-        led = robotic_arm_path + "led"
+        led = self.robotic_arm_path + "led"
         fd= open(led, "w")
         fd.write("1")
         fd.close()
 
     def led_off(self):
-        led = robotic_arm_path + "led"
+        led = self.robotic_arm_path + "led"
         fd= open(led, "w")
         fd.write("0")
         fd.close()
@@ -167,6 +167,8 @@ class Arm:
             time = 2
             if key.char == "1":
                 self.led_on()
+            if key.char == "2":
+                self.led_off()
             if key.char == "q":
                 self.move_anti_clockwise("basemotor", time)
             if key.char == "w":
@@ -198,7 +200,7 @@ class Arm:
             # Stop listener
             return False
 
-    def setup(self):
+    def setup(self, inputDevice=False, threshold=False):
         usb_dev_name = self.find_usb_device()
 
         if ( usb_dev_name == None):
@@ -207,9 +209,13 @@ class Arm:
             print " and switched on the Robotic ARM device"
             sys.exit(-1)
 
-        self.getSoundOptions()
-        inputDevice = raw_input("Enter device ID: ")
-        threshold = raw_input("Threshold is: ")
+        if inputDevice is False:
+            self.getSoundOptions()
+            inputDevice = raw_input("Enter device ID: ")
+
+        if threshold is False:
+            threshold = raw_input("Threshold is: ")
+
         audioThread = thread.start_new_thread(self.setupAudioStream,(int(inputDevice), int(threshold)))
 
 if __name__ == '__main__':
