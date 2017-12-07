@@ -29,6 +29,14 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+
+@@ TODO
+ - Reversing a motor doesn't always clear a halt list.
+ - Add a sanity check for each motor and time ran.
+   turn left & right don't give audable clicks, so having another limiter is essential.
+
+
 """
 
 import os
@@ -87,8 +95,9 @@ class Arm:
 
     def stopRunningMotors(self):
         for motor in self.running:
+            if motor[0] not in self.halted[motor[1]]:
+                self.halted[motor[1]].append(motor[0])
             self.stop(motor[0])
-            self.halted[motor[1]].append(motor[0])
 
     """ Run the motor till it makes a noise"""
     def runTilTime(self, sec, motor, action):
@@ -120,15 +129,12 @@ class Arm:
         # Check for halt, and disallow running
         if motor in self.halted["2"]:
             print "Unable to comply, motor at limit."
-            pprint(self.halted)
             return
         self.running.append([motor, "2"])
         self.runTilTime(sec, motor, "2")
 
     def clear_halt(self, motor, action):
-        pprint(self.halted[action])
         self.halted[action] = filter(lambda item: item != motor, self.halted[action])
-        pprint(self.halted[action])
 
     """ To stop the current activity """
     def stop(self, device):

@@ -19,6 +19,14 @@ sendwhis(user,msg)
 user = The username of the person you want to send the message to (String)
 msg = The message you want to send to the user, must be a string
 --
+
+
+@@ TODO
+ - Rate Limiter
+ - Rate Limit White List
+ - Admin List
+ - Subscription for White List
+
 '''
 
 

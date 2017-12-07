@@ -1,8 +1,8 @@
-# Robotic Arm Controller with Twitch.tv Chat Control and Audio Feedback Loop
+# Robotic Arm Controller with Twitch.tv Chat Control and Audio Feedback Control Loop
 
 Connects the OWI Robot Arm to Twitch, uses audio feedback to prevent gearbox damage.
 
-Twitch Client Based on work by LynnAU under the MIT License
+Twitch Client Based on work by LynnAU under the MIT License:
 https://github.com/LynnAU/Twitch-Chat-Bot-V2
 
 Arm Controller Based on the robotic_arm_driver example here: 
