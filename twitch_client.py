@@ -96,29 +96,29 @@ def command(cmd, arm):
     if(cmd == "!light off"):
         arm.led_off()
     if(cmd == "!left"):
-        arm.move_anti_clockwise("basemotor", 2)
+        arm.base("left", 2)
     if(cmd == "!right"):
-        arm.move_clockwise("basemotor", 2)
+        arm.base("right", 2)
     if(cmd == "!grab"):
-        arm.move_clockwise("gripmotor", 1.8)
+        arm.grip("close", 1.8)
     if(cmd == "!drop"):
-        arm.move_anti_clockwise("gripmotor", 1.8)
+        arm.grip("open", 1.8)
     if(cmd == "!wrist down"):
-        arm.move_anti_clockwise("motor2", 2)
+        arm.wrist("down", 2)
     if(cmd == "!wrist up"):
-        arm.move_clockwise("motor2", 2)
+        arm.wrist("up", 2)
     if(cmd == "!elbow down"):
-        arm.move_anti_clockwise("motor3", 1.5)
+        arm.elbow("down", 1.5)
     if(cmd == "!elbow up"):
-        arm.move_clockwise("motor3", 2)
+        arm.elbow("up", 2)
     if(cmd == "!shoulder down"):
-        arm.move_anti_clockwise("motor4", 1.5)
+        arm.shoulder("down", 1.5)
     if(cmd == "!shoulder up"):
-        arm.move_clockwise("motor4", 2)
+        arm.shoulder("up", 2)
 
 if __name__ == '__main__':
-    arm = Arm()
-    arm.setup(config.audioDevice, config.threshold)
+    arm = Arm(config.audioDevice, config.threshold)
+    
     channels = config.channels
     username = config.username
     oauth = config.oauth
