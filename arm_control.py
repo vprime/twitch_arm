@@ -61,57 +61,55 @@ class Motor:
         lastMove = "0"
         halted = False
         robotic_arm_path = ""
-        time = ""
 
         STOP = "0"
         CLOCKWISE = "1"
         COUNTER_CLOCKWISE = "2"
-
-        path = self.robotic_arm_path + self.device
 
         def __init__(self, motorData, robotic_arm_path):
             self.name = motorData[0]
             self.device = motorData[1]
             self.maxTime = motorData[2]
             self.robotic_arm_path = robotic_arm_path
+            self.path = self.robotic_arm_path + self.device
 
         # Safely prevent the motor from traveling further.
         def halt(self):
-            if(self.currentAction != self.STOP)
+            if self.currentAction != self.STOP:
                 self.halted = True
-                setAction(self.STOP)
+                self.setAction(self.STOP)
 
         def forward(self, runTime):
-            setAction(self.CLOCKWISE, runTime)
+            self.setAction(self.CLOCKWISE, runTime)
 
         def backward(self, runTime):
-            setAction(self.COUNTER_CLOCKWISE, runTime)
+            self.setAction(self.COUNTER_CLOCKWISE, runTime)
 
         # Record the action, and write to the motor
         def setAction(self, action, runTime = 0):
-            if self.halted && action == self.lastMove:
-                print "Unable to comply, motor halted: " + name
+            if self.halted and action == self.lastMove:
+                print "Unable to comply, motor halted: " + self.name
                 return
-            if self.halted && action != self.STOP:
+            if self.halted and action != self.STOP:
                 self.halted = False
             self.currentAction = action
             self.runTime = runTime
             fd = open(self.path, "w")
             fd.write(action)
-            time = time.time()
+            self.start = time.time()
             fd.close()
             if action != self.STOP:
                 self.lastMove = action
 
         # Runs constantly
-        def update():
+        def update(self):
             # Stop the motor if it's halted
-            if self.halted && self.currentAction != self.STOP:
+            if self.halted and self.currentAction != self.STOP:
                 self.setAction(self.STOP)
             # Check the time vs motor's start time
-            var now = time.time()
-            if self.currentAction == self.CLOCKWISE || self.currentAction == self.COUNTER_CLOCKWISE:
-                if self.time + maxTime < now || self.time + runTime < now:
+            now = time.time()
+            if self.currentAction == self.CLOCKWISE or self.currentAction == self.COUNTER_CLOCKWISE:
+                if self.start + self.maxTime < now or self.start + self.runTime < now:
                     self.setAction(self.STOP)
 
 class Arm:
@@ -140,8 +138,8 @@ class Arm:
     def setupMotors(self):
         for motorData in self.deviceMotors:
             motor = Motor(motorData, self.robotic_arm_path)
-            motors.append(motor)
-        motorUpdateThread = thread.start_new_thread(self.updateMotors)
+            self.motors.append(motor)
+        motorUpdateThread = thread.start_new_thread(self.updateMotors, ())
 
     def setupAudioStream(self, inputDevice, threshold):
         FORMAT = pyaudio.paInt16
@@ -169,20 +167,19 @@ class Arm:
     # Run the update on motors
     def updateMotors(self):
         while True:
-            for motor in motors:
+            for motor in self.motors:
                 motor.update()
             time.sleep(0.01)
 
     def stopRunningMotors(self):
-        pprint(self.running)
-        for motor in motors:
+        for motor in self.motors:
             motor.halt()
 
     """ Run motors """
     def getMotor(self, name):
-        for motor in motors:
-            if motor.name == name
-            return motor
+        for motor in self.motors:
+            if motor.name == name:
+                return motor
 
     def base(self, direction, time):
         motor = self.getMotor("base")
@@ -213,7 +210,7 @@ class Arm:
             motor.backward(time)
 
     def shoulder(self, direction, time):
-        motor = self.getMotor("elbow")
+        motor = self.getMotor("shoulder")
         if direction is "up":
             motor.forward(time)
         if direction is "down":
