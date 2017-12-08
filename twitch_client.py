@@ -22,10 +22,7 @@ msg = The message you want to send to the user, must be a string
 
 
 @@ TODO
- - Rate Limiter
- - Rate Limit White List
- - Admin List
- - Subscription for White List
+ - Subscription Services
 
 '''
 
@@ -118,7 +115,7 @@ def command(cmd, arm):
 
 if __name__ == '__main__':
     arm = Arm(config.audioDevice, config.threshold)
-    
+
     channels = config.channels
     username = config.username
     oauth = config.oauth

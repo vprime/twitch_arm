@@ -32,9 +32,10 @@ SOFTWARE.
 
 
 @@ TODO
- - Reversing a motor doesn't always clear a halt list.
  - Add a sanity check for each motor and time ran.
    turn left & right don't give audable clicks, so having another limiter is essential.
+ - Add a "Zero" position
+ - Add a few scripted commands like "dance", "reach near", "reach far"
 
 
 """
@@ -303,50 +304,3 @@ if __name__ == '__main__':
     # Path for the robotic arm sysfs entries
     with keyboard.Listener(on_press=arm.on_press, on_release=arm.on_release) as listener:
         listener.join()
-    """
-    
-    # Switch on and off the LED in Robotic arm
-    print "LED control"
-    led= robotic_arm_path+"led"
-    arm.led_on(led)
-    time.sleep(1)
-    arm.led_off(led)
-        
-    # Move the grip 
-    print "Grip control"
-    grip= robotic_arm_path+"gripmotor"
-    arm.move_clockwise(grip, 1)
-    arm.move_anti_clockwise(grip, 1)
-    arm.stop(grip)
-
-    # Move the base 
-    print "Base Motor control"
-    base= robotic_arm_path+"basemotor"
-    arm.move_clockwise(base, 2)
-    arm.move_anti_clockwise(base, 2)
-    arm.stop(base)
-
-    # Move the Wrist
-    print "Wrist Motor control"
-    wrist= robotic_arm_path+"motor2"
-    arm.move_clockwise(wrist, 1)
-    arm.move_anti_clockwise(wrist, 1)
-    arm.stop(wrist)
-
-    # Move the Elbow
-    print "Elbow Motor control"
-    elbow= robotic_arm_path+"motor3"
-    arm.move_clockwise(elbow, 1)
-    arm.move_anti_clockwise(elbow, 1)
-    arm.stop(elbow)
-
-    # Move the Shoulder
-    print "Shoulder Motor control"
-    shoulder= robotic_arm_path+"motor4"
-    arm.move_clockwise(shoulder, 1)
-    arm.move_anti_clockwise(shoulder, 1)
-    arm.stop(shoulder)
-
-    # Disconnect the audio
-    arm.listening = False
-    """

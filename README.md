@@ -2,6 +2,8 @@
 
 Connects the OWI Robot Arm to Twitch, uses audio feedback to prevent gearbox damage.
 
+This is not a replacement for a true feedback control loop, and your arm can be damaged expecially if you expose it's controls to random strangers on the internet.
+
 Twitch Client Based on work by LynnAU under the MIT License:
 https://github.com/LynnAU/Twitch-Chat-Bot-V2
 
