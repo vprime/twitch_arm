@@ -59,7 +59,7 @@ class Motor:
         runTime = 0
         currentAction = "0"
         lastMove = "0"
-        halt = False
+        halted = False
         robotic_arm_path = ""
         time = ""
 
@@ -78,7 +78,7 @@ class Motor:
         # Safely prevent the motor from traveling further.
         def halt(self):
             if(self.currentAction != self.STOP)
-                halt = True
+                self.halted = True
                 setAction(self.STOP)
 
         def forward(self, runTime):
@@ -89,11 +89,11 @@ class Motor:
 
         # Record the action, and write to the motor
         def setAction(self, action, runTime = 0):
-            if self.halt && action == self.lastMove:
+            if self.halted && action == self.lastMove:
                 print "Unable to comply, motor halted: " + name
                 return
-            if self.halt && action != self.STOP:
-                self.halt = False
+            if self.halted && action != self.STOP:
+                self.halted = False
             self.currentAction = action
             self.runTime = runTime
             fd = open(self.path, "w")
@@ -103,9 +103,10 @@ class Motor:
             if action != self.STOP:
                 self.lastMove = action
 
+        # Runs constantly
         def update():
             # Stop the motor if it's halted
-            if self.halt && self.currentAction != self.STOP:
+            if self.halted && self.currentAction != self.STOP:
                 self.setAction(self.STOP)
             # Check the time vs motor's start time
             var now = time.time()
@@ -140,6 +141,7 @@ class Arm:
         for motorData in self.deviceMotors:
             motor = Motor(motorData, self.robotic_arm_path)
             motors.append(motor)
+        motorUpdateThread = thread.start_new_thread(self.updateMotors)
 
     def setupAudioStream(self, inputDevice, threshold):
         FORMAT = pyaudio.paInt16
@@ -163,6 +165,13 @@ class Arm:
         stream.stop_stream()
         stream.close()
         p.terminate()
+
+    # Run the update on motors
+    def updateMotors(self):
+        while True:
+            for motor in motors:
+                motor.update()
+            time.sleep(0.01)
 
     def stopRunningMotors(self):
         pprint(self.running)
