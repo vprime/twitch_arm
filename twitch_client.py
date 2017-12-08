@@ -196,4 +196,4 @@ if __name__ == '__main__':
             ''' Respond to server pings '''
             if msg.find('PING :') != -1:
                 print('PING: tmi.twitch.tv > Client')
-    ping()
+                ping()
