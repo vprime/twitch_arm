@@ -58,6 +58,7 @@ after configuration is complete, run `./twitch_client.py` to begin accepting inp
 - Quit: Esc
 
 ## Twitch Commands
+All movement commands can be ammended with a time in seconds to run.
 - `!ping` a connection test
 - `!light on` Turns on the LED
 - `!light off` Turns off the LED
