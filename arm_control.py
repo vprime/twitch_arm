@@ -74,7 +74,7 @@ class Motor:
 
         # Safely prevent the motor from traveling further.
         def halt(self):
-            if self.currentAction != self.STOP:
+            if self.checkMotor() != self.STOP:
                 self.halted = True
                 self.setAction(self.STOP)
 
@@ -83,6 +83,12 @@ class Motor:
 
         def backward(self, runTime):
             self.setAction(self.COUNTER_CLOCKWISE, runTime)
+
+        def checkMotor(self):
+            fd = open(self.path, "r")
+            current = fd.read()
+            fd.close()
+            return current.strip(' \t\n\r')
 
         # Record the action, and write to the motor
         def setAction(self, action, runTime = 0):
@@ -107,7 +113,8 @@ class Motor:
                 self.setAction(self.STOP)
             # Check the time vs motor's start time
             now = time.time()
-            if self.currentAction == self.CLOCKWISE or self.currentAction == self.COUNTER_CLOCKWISE:
+            state = self.checkMotor()
+            if self.CLOCKWISE in state  or self.COUNTER_CLOCKWISE in state:
                 if self.start + self.maxTime < now or self.start + self.runTime < now:
                     self.setAction(self.STOP)
 
