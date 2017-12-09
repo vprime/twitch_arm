@@ -121,8 +121,11 @@ def command(cmd, arm, user):
         arm.shoulder("down", intOrDef(cmd, 1.5))
     if(cmd.startswith("!shoulder up")):
         arm.shoulder("up", intOrDef(cmd, 2))
-    if(cmd == "!reset halt" and user == username):
+    if(cmd.startswith("!shoulder up") and user == username):
         arm.resetHalts()
+    if(cmd.startswith("!com") or cmd.startswith("!help")):
+        sendmsg(channel, 
+            "Arm Commands: !<motor> <direction> <seconds 1-4>\n led (on off), left, right, grab, drop,\n wrist (up down), elbow (up down), shoulder (up down)")
 
 if __name__ == '__main__':
     arm = Arm(config.audioDevice, config.threshold)
@@ -161,6 +164,9 @@ if __name__ == '__main__':
     temp = 0
     while True:
         (sread,swrite,sexc) = select.select(socks,socks,[],120)
+        # Echo the messages to the channel                   
+        if(len(arm.messages) > 0):
+            sendmsg(channel, arm.messages.pop(0))
         for sock in sread:    
             ''' Receive data from the server '''
             msg = sock.recv(2048)
@@ -198,11 +204,7 @@ if __name__ == '__main__':
                     channel = msg_edit[1].split(' ',2)[2][:-1] # Channel
 
                     whis_split = str.split(message)
-            """                    
-            if(len(arm.messages) > 0):
-                sendmsg(channel, arm.messages.pop())
-                arm.messages
-            """
+            
             ''' Respond to server pings '''
             if msg.find('PING :') != -1:
                 print('PING: tmi.twitch.tv > Client')

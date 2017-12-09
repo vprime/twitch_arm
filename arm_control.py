@@ -96,6 +96,7 @@ class Motor:
         def setAction(self, action, runTime = 0):
             if self.halted and action == self.lastMove:
                 print "Unable to comply, motor halted: " + self.name
+                self.messages.append("Unable to comply, " + self.name + " motor halted in that direction. Reverse to release." )
                 return
             if self.halted and action != self.STOP:
                 self.halted = False
@@ -181,6 +182,8 @@ class Arm:
         while True:
             for motor in self.motors:
                 motor.update()
+                if(len(motor.messages) > 0):
+                    self.messages.append(motor.messages.pop(0))
             time.sleep(0.01)
 
     def stopRunningMotors(self):
