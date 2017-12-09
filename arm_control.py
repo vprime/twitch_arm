@@ -60,10 +60,12 @@ class Motor:
         lastMove = "0"
         halted = False
         robotic_arm_path = ""
+        count = 0
 
         STOP = "0"
         CLOCKWISE = "1"
         COUNTER_CLOCKWISE = "2"
+        messages = []
 
         def __init__(self, motorData, robotic_arm_path):
             self.name = motorData[0]
@@ -97,8 +99,11 @@ class Motor:
                 return
             if self.halted and action != self.STOP:
                 self.halted = False
+            if action != self.STOP and action != self.lastMove:
+                self.count = 0
             self.currentAction = action
             self.runTime = runTime
+            self.count += runTime
             fd = open(self.path, "w")
             fd.write(action)
             self.start = time.time()
@@ -115,7 +120,7 @@ class Motor:
             # Check the time vs motor's start time
             now = time.time()
             if self.CLOCKWISE in state  or self.COUNTER_CLOCKWISE in state:
-                if self.start + self.maxTime < now or self.start + self.runTime < now:
+                if self.start + self.maxTime < now or self.start + self.runTime < now or self.count > self.maxTime:
                     self.setAction(self.STOP)
 
 class Arm:
@@ -123,16 +128,17 @@ class Arm:
     listening = True
 
     deviceMotors = [
-        ["base", "basemotor", 6],
-        ["grip", "gripmotor", 2],
-        ["wrist", "motor2", 4],
-        ["elbow", "motor3", 4],
-        ["shoulder", "motor4", 4]
+        ["base", "basemotor", 12],
+        ["grip", "gripmotor", 3],
+        ["wrist", "motor2", 6],
+        ["elbow", "motor3", 8],
+        ["shoulder", "motor4", 8]
     ]
 
     robotic_arm_path= ""
 
     motors = []
+    messages = []
 
     """ Locate the sysfs entry corresponding to USB Robotic ARM """
     def findUsbDevice(self):
@@ -180,6 +186,11 @@ class Arm:
     def stopRunningMotors(self):
         for motor in self.motors:
             motor.halt()
+
+    def resetHalts(self):
+        for motor in self.motors:
+            motor.halt = False
+            motor.count = 0
 
     """ Run motors """
     def getMotor(self, name):

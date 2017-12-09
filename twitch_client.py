@@ -94,19 +94,17 @@ def intOrDef(string, default):
         return int(filter(str.isdigit, string))
     return default
 
-def command(cmd, arm):
+def command(cmd, arm, user):
     if(cmd == "!ping"):
         sendmsg(channel, "Pong!")
     if(cmd == "!light on"):
         arm.led_on()
     if(cmd == "!light off"):
         arm.led_off()
-    # Special Note: 
-    # base motion is reversed so the action looks right to the user
     if(cmd.startswith("!left")):
-        arm.base("right", intOrDef(cmd, 2))
-    if(cmd.startswith("!right")):
         arm.base("left", intOrDef(cmd, 2))
+    if(cmd.startswith("!right")):
+        arm.base("right", intOrDef(cmd, 2))
     if(cmd.startswith("!grab")):
         arm.grip("close", intOrDef(cmd, 1.8))
     if(cmd.startswith("!drop")):
@@ -123,6 +121,8 @@ def command(cmd, arm):
         arm.shoulder("down", intOrDef(cmd, 1.5))
     if(cmd.startswith("!shoulder up")):
         arm.shoulder("up", intOrDef(cmd, 2))
+    if(cmd == "!reset halt" and user == username):
+        arm.resetHalts()
 
 if __name__ == '__main__':
     arm = Arm(config.audioDevice, config.threshold)
@@ -186,7 +186,7 @@ if __name__ == '__main__':
                     channel = msg_edit[1].split(' ',2)[2][:-1] # Channel
                     #print(message)
                     #msg_split = str.split(message)
-                    command(message, arm)
+                    command(message, arm, user)
                             
             # ANYTHING TO DO WITH WHISPERS RECIEVED FROM USERS
             check = re.findall('@(.*).tmi.twitch.tv WHISPER (.*) :(.*)',msg)
@@ -198,9 +198,11 @@ if __name__ == '__main__':
                     channel = msg_edit[1].split(' ',2)[2][:-1] # Channel
 
                     whis_split = str.split(message)
-                                   
-     
-
+            """                    
+            if(len(arm.messages) > 0):
+                sendmsg(channel, arm.messages.pop())
+                arm.messages
+            """
             ''' Respond to server pings '''
             if msg.find('PING :') != -1:
                 print('PING: tmi.twitch.tv > Client')
