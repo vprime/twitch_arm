@@ -22,6 +22,7 @@ msg = The message you want to send to the user, must be a string
 
 
 @@ TODO
+ - Allow user to set time
  - Rate Limiter
  - Rate Limit White List
  - Admin List
@@ -88,6 +89,11 @@ def getmsg(msg):
             ''' PRINT WHISPER TO CONSOLE '''
             print('*WHISPER* '+whisper[0]+': '+whisper[2])
 
+def intOrDef(string, default):
+    if(any(str.isdigit(c) for c in string)):
+        return int(filter(str.isdigit, string))
+    return default
+
 def command(cmd, arm):
     if(cmd == "!ping"):
         sendmsg(channel, "Pong!")
@@ -95,26 +101,28 @@ def command(cmd, arm):
         arm.led_on()
     if(cmd == "!light off"):
         arm.led_off()
-    if(cmd == "!left"):
-        arm.base("left", 2)
-    if(cmd == "!right"):
-        arm.base("right", 2)
-    if(cmd == "!grab"):
-        arm.grip("close", 1.8)
-    if(cmd == "!drop"):
-        arm.grip("open", 1.8)
-    if(cmd == "!wrist down"):
-        arm.wrist("down", 2)
-    if(cmd == "!wrist up"):
-        arm.wrist("up", 2)
-    if(cmd == "!elbow down"):
-        arm.elbow("down", 1.5)
-    if(cmd == "!elbow up"):
-        arm.elbow("up", 2)
-    if(cmd == "!shoulder down"):
-        arm.shoulder("down", 1.5)
-    if(cmd == "!shoulder up"):
-        arm.shoulder("up", 2)
+    # Special Note: 
+    # base motion is reversed so the action looks right to the user
+    if(cmd.startswith("!left")):
+        arm.base("right", intOrDef(cmd, 2))
+    if(cmd.startswith("!right")):
+        arm.base("left", intOrDef(cmd, 2))
+    if(cmd.startswith("!grab")):
+        arm.grip("close", intOrDef(cmd, 1.8))
+    if(cmd.startswith("!drop")):
+        arm.grip("open", intOrDef(cmd, 1.8))
+    if(cmd.startswith("!wrist down")):
+        arm.wrist("down", intOrDef(cmd, 2))
+    if(cmd.startswith("!wrist up")):
+        arm.wrist("up", intOrDef(cmd, 2))
+    if(cmd.startswith("!elbow down")):
+        arm.elbow("down", intOrDef(cmd, 1.5))
+    if(cmd.startswith("!elbow up")):
+        arm.elbow("up", intOrDef(cmd, 2))
+    if(cmd.startswith("!shoulder down")):
+        arm.shoulder("down", intOrDef(cmd, 1.5))
+    if(cmd.startswith("!shoulder up")):
+        arm.shoulder("up", intOrDef(cmd, 2))
 
 if __name__ == '__main__':
     arm = Arm(config.audioDevice, config.threshold)
