@@ -54,10 +54,10 @@ from pynput import keyboard
 class Motor:
         name = ""
         device = ""
-        maxTime = 0
-        runTime = 0
-        currentAction = "0"
-        lastMove = "0"
+        max_time = 0
+        run_time = 0
+        current_action = "0"
+        last_move = "0"
         halted = False
         robotic_arm_path = ""
         count = 0
@@ -67,68 +67,68 @@ class Motor:
         COUNTER_CLOCKWISE = "2"
         messages = []
 
-        def __init__(self, motorData, robotic_arm_path):
-            self.name = motorData[0]
-            self.device = motorData[1]
-            self.maxTime = motorData[2]
+        def __init__(self, motor_data, robotic_arm_path):
+            self.name = motor_data[0]
+            self.device = motor_data[1]
+            self.max_time = motor_data[2]
             self.robotic_arm_path = robotic_arm_path
             self.path = self.robotic_arm_path + self.device
 
         # Safely prevent the motor from traveling further.
         def halt(self):
-            if self.checkMotor() != self.STOP:
+            if self.check_motor() != self.STOP:
                 self.halted = True
-                self.setAction(self.STOP)
+                self.set_action(self.STOP)
 
-        def forward(self, runTime):
-            self.setAction(self.CLOCKWISE, runTime)
+        def forward(self, run_time):
+            self.set_action(self.CLOCKWISE, run_time)
 
-        def backward(self, runTime):
-            self.setAction(self.COUNTER_CLOCKWISE, runTime)
+        def backward(self, run_time):
+            self.set_action(self.COUNTER_CLOCKWISE, run_time)
 
-        def checkMotor(self):
+        def check_motor(self):
             fd = open(self.path, "r")
             current = fd.read()
             fd.close()
             return current.strip(' \t\n\r')
 
         # Record the action, and write to the motor
-        def setAction(self, action, runTime = 0):
-            if self.halted and action == self.lastMove:
+        def set_action(self, action, run_time = 0):
+            if self.halted and action == self.last_move:
                 print "Unable to comply, motor halted: " + self.name
                 self.messages.append("Unable to comply, " + self.name + " motor halted in that direction. Reverse to release." )
                 return
             if self.halted and action != self.STOP:
                 self.halted = False
-            if action != self.STOP and action != self.lastMove:
+            if action != self.STOP and action != self.last_move:
                 self.count = 0
-            self.currentAction = action
-            self.runTime = runTime
-            self.count += runTime
+            self.current_action = action
+            self.run_time = run_time
+            self.count += run_time
             fd = open(self.path, "w")
             fd.write(action)
             self.start = time.time()
             fd.close()
             if action != self.STOP:
-                self.lastMove = action
+                self.last_move = action
 
         # Runs constantly
         def update(self):
-            state = self.checkMotor()
+            state = self.check_motor()
             # Stop the motor if it's halted
             if self.halted and state != self.STOP:
-                self.setAction(self.STOP)
+                self.set_action(self.STOP)
             # Check the time vs motor's start time
             now = time.time()
             if self.CLOCKWISE in state  or self.COUNTER_CLOCKWISE in state:
-                if self.start + self.maxTime < now or self.start + self.runTime < now or self.count > self.maxTime:
-                    self.setAction(self.STOP)
+                if self.start + self.max_time < now or self.start + self.run_time < now or self.count > self.max_time:
+                    self.set_action(self.STOP)
 
 class Arm:
     chunk = 1024
     listening = True
 
-    deviceMotors = [
+    device_motors = [
         ["base", "basemotor", 12],
         ["grip", "gripmotor", 3],
         ["wrist", "motor2", 6],
@@ -142,19 +142,19 @@ class Arm:
     messages = []
 
     """ Locate the sysfs entry corresponding to USB Robotic ARM """
-    def findUsbDevice(self):
+    def find_usb_device(self):
         for file in os.listdir('/sys/bus/usb/drivers/robotic_arm/'):
             if fnmatch.fnmatch(file, '*:*'):
                 self.robotic_arm_path = "/sys/bus/usb/drivers/robotic_arm/"+ file + "/"
                 return file
 
-    def setupMotors(self):
-        for motorData in self.deviceMotors:
-            motor = Motor(motorData, self.robotic_arm_path)
+    def setup_motors(self):
+        for motor_data in self.device_motors:
+            motor = Motor(motor_data, self.robotic_arm_path)
             self.motors.append(motor)
-        motorUpdateThread = thread.start_new_thread(self.updateMotors, ())
+        motor_update_thread = thread.start_new_thread(self.update_motors, ())
 
-    def setupAudioStream(self, inputDevice, threshold):
+    def setup_audio_stream(self, input_device, threshold):
         FORMAT = pyaudio.paInt16
         CHANNELS = 1
         RATE = 44100
@@ -164,7 +164,7 @@ class Arm:
                     rate=RATE, 
                     input=True,
                     output=True,
-                    input_device_index=inputDevice,
+                    input_device_index=input_device,
                     frames_per_buffer=self.chunk)
         self.listening = True
         while self.listening:
@@ -172,13 +172,13 @@ class Arm:
             rms = audioop.rms(data, 2)  #width=2 for format=paInt16
             if rms > threshold:
                 print("RMS: " + str(rms))
-                self.stopRunningMotors()
+                self.stop_running_motors()
         stream.stop_stream()
         stream.close()
         p.terminate()
 
     # Run the update on motors
-    def updateMotors(self):
+    def update_motors(self):
         while True:
             for motor in self.motors:
                 motor.update()
@@ -186,51 +186,51 @@ class Arm:
                     self.messages.append(motor.messages.pop(0))
             time.sleep(0.01)
 
-    def stopRunningMotors(self):
+    def stop_running_motors(self):
         for motor in self.motors:
             motor.halt()
 
-    def resetHalts(self):
+    def reset_halts(self):
         for motor in self.motors:
             motor.halt = False
             motor.count = 0
 
     """ Run motors """
-    def getMotor(self, name):
+    def get_motor(self, name):
         for motor in self.motors:
             if motor.name == name:
                 return motor
 
     def base(self, direction, time):
-        motor = self.getMotor("base")
+        motor = self.get_motor("base")
         if direction is "left":
             motor.backward(time)
         if direction is "right":
             motor.forward(time)
 
     def grip(self, direction, time):
-        motor = self.getMotor("grip")
+        motor = self.get_motor("grip")
         if direction is "close":
             motor.forward(time)
         if direction is "open":
             motor.backward(time)
 
     def wrist(self, direction, time):
-        motor = self.getMotor("wrist")
+        motor = self.get_motor("wrist")
         if direction is "up":
             motor.forward(time)
         if direction is "down":
             motor.backward(time)
 
     def elbow(self, direction, time):
-        motor = self.getMotor("elbow")
+        motor = self.get_motor("elbow")
         if direction is "up":
             motor.forward(time)
         if direction is "down":
             motor.backward(time)
 
     def shoulder(self, direction, time):
-        motor = self.getMotor("shoulder")
+        motor = self.get_motor("shoulder")
         if direction is "up":
             motor.forward(time)
         if direction is "down":
@@ -250,7 +250,7 @@ class Arm:
         fd.write("0")
         fd.close()
 
-    def getSoundOptions(self):
+    def get_sound_options(self):
         p = pyaudio.PyAudio()
         info = p.get_host_api_info_by_index(0)
         numdevices = info.get('deviceCount')
@@ -298,8 +298,8 @@ class Arm:
             # Stop listener
             return False
 
-    def __init__(self, inputDevice=False, threshold=False):
-        usb_dev_name = self.findUsbDevice()
+    def __init__(self, input_device=False, threshold=False):
+        usb_dev_name = self.find_usb_device()
 
         if ( usb_dev_name == None):
             print "Please ensure that robotic_arm module is loaded "
@@ -307,15 +307,15 @@ class Arm:
             print " and switched on the Robotic ARM device"
             sys.exit(-1)
 
-        self.setupMotors()
-        if inputDevice is False:
+        self.setup_motors()
+        if input_device is False:
             self.getSoundOptions()
-            inputDevice = raw_input("Enter device ID: ")
+            input_device = raw_input("Enter device ID: ")
 
         if threshold is False:
             threshold = raw_input("Threshold is: ")
 
-        audioThread = thread.start_new_thread(self.setupAudioStream,(int(inputDevice), int(threshold)))
+        audio_thread = thread.start_new_thread(self.setup_audio_stream,(int(input_device), int(threshold)))
 
 if __name__ == '__main__':
     arm = Arm()

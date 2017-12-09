@@ -1,5 +1,5 @@
 #!/usr/bin/python
-audioDevice = 0
+audio_device = 0
 threshold = 6000
 
 channels = [

@@ -89,7 +89,7 @@ def getmsg(msg):
             ''' PRINT WHISPER TO CONSOLE '''
             print('*WHISPER* '+whisper[0]+': '+whisper[2])
 
-def intOrDef(string, default):
+def int_or_def(string, default):
     if(any(str.isdigit(c) for c in string)):
         return int(filter(str.isdigit, string))
     return default
@@ -97,38 +97,54 @@ def intOrDef(string, default):
 def command(cmd, arm, user):
     if(cmd == "!ping"):
         sendmsg(channel, "Pong!")
+        return
     if(cmd == "!light on"):
         arm.led_on()
+        return
     if(cmd == "!light off"):
         arm.led_off()
+        return
     if(cmd.startswith("!left")):
-        arm.base("left", intOrDef(cmd, 2))
+        arm.base("left", int_or_def(cmd, 2))
+        return
     if(cmd.startswith("!right")):
-        arm.base("right", intOrDef(cmd, 2))
+        arm.base("right", int_or_def(cmd, 2))
+        return
     if(cmd.startswith("!grab")):
-        arm.grip("close", intOrDef(cmd, 1.8))
+        arm.grip("close", int_or_def(cmd, 1.8))
+        return
     if(cmd.startswith("!drop")):
-        arm.grip("open", intOrDef(cmd, 1.8))
+        arm.grip("open", int_or_def(cmd, 1.8))
+        return
     if(cmd.startswith("!wrist down")):
-        arm.wrist("down", intOrDef(cmd, 2))
+        arm.wrist("down", int_or_def(cmd, 2))
+        return
     if(cmd.startswith("!wrist up")):
-        arm.wrist("up", intOrDef(cmd, 2))
+        arm.wrist("up", int_or_def(cmd, 2))
+        return
     if(cmd.startswith("!elbow down")):
-        arm.elbow("down", intOrDef(cmd, 1.5))
+        arm.elbow("down", int_or_def(cmd, 1.5))
+        return
     if(cmd.startswith("!elbow up")):
-        arm.elbow("up", intOrDef(cmd, 2))
+        arm.elbow("up", int_or_def(cmd, 2))
+        return
     if(cmd.startswith("!shoulder down")):
-        arm.shoulder("down", intOrDef(cmd, 1.5))
+        arm.shoulder("down", int_or_def(cmd, 1.5))
+        return
     if(cmd.startswith("!shoulder up")):
-        arm.shoulder("up", intOrDef(cmd, 2))
-    if(cmd.startswith("!shoulder up") and user == username):
-        arm.resetHalts()
+        arm.shoulder("up", int_or_def(cmd, 2))
+        return
+    if(cmd.startswith("!reset") and user == username):
+        arm.reset_halts()
+        return
     if(cmd.startswith("!com") or cmd.startswith("!help")):
-        sendmsg(channel, 
-            "Arm Commands: !<motor> <direction> <seconds 1-4>\n led (on off), left, right, grab, drop,\n wrist (up down), elbow (up down), shoulder (up down)")
+        sendmsg(channel, "Arm Commands: !<motor> <direction> <seconds 1-4>  Actions Available: led (on off), left, right, grab, drop, wrist (up down), elbow (up down), shoulder (up down)")
+        return
+    if cmd.startswith("!"):
+        sendmsg(channel, "Not a command I understand")
 
 if __name__ == '__main__':
-    arm = Arm(config.audioDevice, config.threshold)
+    arm = Arm(config.audio_device, config.threshold)
     
     channels = config.channels
     username = config.username
