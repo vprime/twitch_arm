@@ -8,6 +8,9 @@ https://github.com/LynnAU/Twitch-Chat-Bot-V2
 Arm Controller Based on the robotic_arm_driver example here: 
 https://github.com/maxinbjohn/robotic_arm_driver/blob/master/examples/python/motor.py
 
+Support this projects, and development of other projects like this on Patreon: 
+https://www.patreon.com/ManOnTheMoonStudio
+
 ## Requirements:
 - OWI Robotic Arm
 - USB kit for your Arm
