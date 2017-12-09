@@ -108,12 +108,12 @@ class Motor:
 
         # Runs constantly
         def update(self):
+            state = self.checkMotor()
             # Stop the motor if it's halted
-            if self.halted and self.currentAction != self.STOP:
+            if self.halted and state != self.STOP:
                 self.setAction(self.STOP)
             # Check the time vs motor's start time
             now = time.time()
-            state = self.checkMotor()
             if self.CLOCKWISE in state  or self.COUNTER_CLOCKWISE in state:
                 if self.start + self.maxTime < now or self.start + self.runTime < now:
                     self.setAction(self.STOP)
