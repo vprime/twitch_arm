@@ -104,7 +104,7 @@ class Motor:
                 self.count = 0
             self.current_action = action
             self.run_time = run_time
-            self.count += run_time
+            self.count += min(run_time, self.max_time)
             fd = open(self.path, "w")
             fd.write(action)
             self.start = time.time()

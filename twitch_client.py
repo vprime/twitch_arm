@@ -141,7 +141,7 @@ def command(cmd, arm, user):
         sendmsg(channel, "Arm Commands: !<motor> <direction> <seconds 1-4>  Actions Available: led (on off), left, right, grab, drop, wrist (up down), elbow (up down), shoulder (up down)")
         return
     if cmd.startswith("!"):
-        sendmsg(channel, "Not a command I understand")
+        sendmsg(channel, "Not a command I understand, try !help")
 
 if __name__ == '__main__':
     arm = Arm(config.audio_device, config.threshold)
