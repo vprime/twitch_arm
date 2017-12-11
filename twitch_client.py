@@ -137,6 +137,9 @@ def command(cmd, arm, user):
     if(cmd.startswith("!reset") and user == username):
         arm.reset_halts()
         return
+    if(cmd.startswith("!threshold") and user == username):
+        arm.threshold = int_or_def(cmd, 10000)
+        return
     if(cmd.startswith("!com") or cmd.startswith("!help")):
         sendmsg(channel, "Arm Commands: !<motor> <direction> <seconds 1-4>  Actions Available: led (on off), left, right, grab, drop, wrist (up down), elbow (up down), shoulder (up down)")
         return

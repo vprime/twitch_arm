@@ -154,7 +154,7 @@ class Arm:
             self.motors.append(motor)
         motor_update_thread = thread.start_new_thread(self.update_motors, ())
 
-    def setup_audio_stream(self, input_device, threshold):
+    def setup_audio_stream(self, input_device):
         FORMAT = pyaudio.paInt16
         CHANNELS = 1
         RATE = 44100
@@ -170,7 +170,7 @@ class Arm:
         while self.listening:
             data = stream.read(self.chunk, exception_on_overflow = False)
             rms = audioop.rms(data, 2)  #width=2 for format=paInt16
-            if rms > threshold:
+            if rms > self.threshold:
                 print("RMS: " + str(rms))
                 self.stop_running_motors()
         stream.stop_stream()
@@ -314,8 +314,8 @@ class Arm:
 
         if threshold is False:
             threshold = raw_input("Threshold is: ")
-
-        audio_thread = thread.start_new_thread(self.setup_audio_stream,(int(input_device), int(threshold)))
+        self.threshold = int(threshold)
+        audio_thread = thread.start_new_thread(self.setup_audio_stream,(int(input_device),))
 
 if __name__ == '__main__':
     arm = Arm()
