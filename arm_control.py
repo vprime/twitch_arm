@@ -192,7 +192,7 @@ class Arm:
 
     def reset_halts(self):
         for motor in self.motors:
-            motor.halt = False
+            motor.halted = False
             motor.count = 0
 
     """ Run motors """
