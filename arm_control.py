@@ -102,6 +102,8 @@ class Motor:
                 self.halted = False
             if action != self.STOP and action != self.last_move:
                 self.count = 0
+            if self.count >= self.max_time:
+                self.messages.append("Unable to comply, " + self.name + " has reached it's limit for that direction. Reverse to try again.")
             self.current_action = action
             self.run_time = run_time
             self.count += min(run_time, self.max_time)

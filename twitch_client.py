@@ -39,12 +39,14 @@ import socket
 import select
 import re
 import config
+import time
 from arm_control import Arm
 
 ''' Change the following settings if you wish to run the program '''
 channels = []
 username = ''
 oauth = ''
+
 
 # Definitions to use while connected
 def ping():
@@ -88,6 +90,10 @@ def getmsg(msg):
         if(len(whisper) > 0):
             ''' PRINT WHISPER TO CONSOLE '''
             print('*WHISPER* '+whisper[0]+': '+whisper[2])
+def float_or_def(string, default):
+    if(any(str.isdigit(c) for c in string)):
+        return float(numbers[0])
+    return default
 
 def int_or_def(string, default):
     if(any(str.isdigit(c) for c in string)):
@@ -95,50 +101,70 @@ def int_or_def(string, default):
     return default
 
 def command(cmd, arm, user):
+    cmd = cmd.lower()
+    global solo_user, solo_time, solo_start, username
+    # Ignore nightbot commands
+    if(cmd.startswith("!filters") or cmd.startswith("!poll") or cmd.startswith("!regulars") or cmd.startswith("!songs") or cmd.startswith("!winner")):
+        return
+    if(solo_user and time.time() < solo_start + solo_time and user != username):
+        if(user != solo_user):
+            return
     if(cmd == "!ping"):
         sendmsg(channel, "Pong!")
         return
-    if(cmd == "!light on"):
+    if(cmd == "!light on" or cmd == "!led on"):
         arm.led_on()
         return
-    if(cmd == "!light off"):
+    if(cmd == "!light off" or cmd == "!led off"):
         arm.led_off()
         return
     if(cmd.startswith("!left")):
-        arm.base("left", int_or_def(cmd, 2))
+        arm.base("left", float_or_def(cmd, 2))
         return
     if(cmd.startswith("!right")):
-        arm.base("right", int_or_def(cmd, 2))
+        arm.base("right", float_or_def(cmd, 2))
         return
-    if(cmd.startswith("!grab")):
-        arm.grip("close", int_or_def(cmd, 1.8))
+    if(cmd.startswith("!grab") or cmd.startswith("!close")):
+        arm.grip("close", float_or_def(cmd, 1.8))
         return
-    if(cmd.startswith("!drop")):
-        arm.grip("open", int_or_def(cmd, 1.8))
+    if(cmd.startswith("!drop") or cmd.startswith("!open")):
+        arm.grip("open", float_or_def(cmd, 1.8))
         return
     if(cmd.startswith("!wrist down")):
-        arm.wrist("down", int_or_def(cmd, 2))
+        arm.wrist("down", float_or_def(cmd, 2))
         return
     if(cmd.startswith("!wrist up")):
-        arm.wrist("up", int_or_def(cmd, 2))
+        arm.wrist("up", float_or_def(cmd, 2))
         return
     if(cmd.startswith("!elbow down")):
-        arm.elbow("down", int_or_def(cmd, 1.5))
+        arm.elbow("down", float_or_def(cmd, 1.5))
         return
     if(cmd.startswith("!elbow up")):
-        arm.elbow("up", int_or_def(cmd, 2))
+        arm.elbow("up", float_or_def(cmd, 2))
         return
     if(cmd.startswith("!shoulder down")):
-        arm.shoulder("down", int_or_def(cmd, 1.5))
+        arm.shoulder("down", float_or_def(cmd, 1.5))
         return
     if(cmd.startswith("!shoulder up")):
-        arm.shoulder("up", int_or_def(cmd, 2))
+        arm.shoulder("up", float_or_def(cmd, 2))
         return
     if(cmd.startswith("!reset") and user == username):
         arm.reset_halts()
         return
     if(cmd.startswith("!threshold") and user == username):
-        arm.threshold = int_or_def(cmd, 10000)
+        arm.threshold = float_or_def(cmd, 10000)
+        return
+    if(cmd.startswith("!solo") and user == username):
+        exp = cmd.split(' ')
+        solo_user = exp[1]
+        solo_time = float_or_def(exp[2], 30)
+        sendmsg(channel, "Giving control to " + solo_user + " for " + str(solo_time) + " seconds")
+        solo_start = time.time()
+        return
+    if(cmd.startswith("!clearsolo") and user == username):
+        solo_user = ""
+        solo_time = 0
+        sendmsg(channel, "Giving control back to Twitch!")
         return
     if(cmd.startswith("!com") or cmd.startswith("!help")):
         sendmsg(channel, "Arm Commands: !<motor> <direction> <seconds 1-4>  Actions Available: led (on off), left, right, grab, drop, wrist (up down), elbow (up down), shoulder (up down)")
@@ -152,6 +178,10 @@ if __name__ == '__main__':
     channels = config.channels
     username = config.username
     oauth = config.oauth
+
+    solo_user = ''
+    solo_time = 0
+    solo_start = 0
 
     # Connect to the server using the provided details
     socks = [socket.socket()]
