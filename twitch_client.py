@@ -90,6 +90,7 @@ def getmsg(msg):
         if(len(whisper) > 0):
             ''' PRINT WHISPER TO CONSOLE '''
             print('*WHISPER* '+whisper[0]+': '+whisper[2])
+
 def float_or_def(string, default):
     if(any(str.isdigit(c) for c in string)):
         numbers = re.findall("\d+\.\d+|.\d|\d", string)
