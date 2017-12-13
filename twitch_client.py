@@ -39,12 +39,14 @@ import socket
 import select
 import re
 import config
+import time
 from arm_control import Arm
 
 ''' Change the following settings if you wish to run the program '''
 channels = []
 username = ''
 oauth = ''
+
 
 # Definitions to use while connected
 def ping():
@@ -88,48 +90,99 @@ def getmsg(msg):
         if(len(whisper) > 0):
             ''' PRINT WHISPER TO CONSOLE '''
             print('*WHISPER* '+whisper[0]+': '+whisper[2])
+def float_or_def(string, default):
+    if(any(str.isdigit(c) for c in string)):
+        numbers = re.findall("\d+\.\d+|.\d|\d", string)
+        return float(numbers[0])
+    return default
 
-def intOrDef(string, default):
+def int_or_def(string, default):
     if(any(str.isdigit(c) for c in string)):
         return int(filter(str.isdigit, string))
     return default
 
-def command(cmd, arm):
+def command(cmd, arm, user):
+    cmd = cmd.lower()
+    global solo_user, solo_time, solo_start, username
+    # Ignore nightbot commands
+    if(cmd.startswith("!filters") or cmd.startswith("!poll") or cmd.startswith("!regulars") or cmd.startswith("!songs") or cmd.startswith("!winner")):
+        return
+    if(solo_user and time.time() < solo_start + solo_time and user != username):
+        if(user != solo_user):
+            return
     if(cmd == "!ping"):
         sendmsg(channel, "Pong!")
-    if(cmd == "!light on"):
+        return
+    if(cmd == "!light on" or cmd == "!led on"):
         arm.led_on()
-    if(cmd == "!light off"):
+        return
+    if(cmd == "!light off" or cmd == "!led off"):
         arm.led_off()
-    # Special Note: 
-    # base motion is reversed so the action looks right to the user
+        return
     if(cmd.startswith("!left")):
-        arm.base("right", intOrDef(cmd, 2))
+        arm.base("left", float_or_def(cmd, 2))
+        return
     if(cmd.startswith("!right")):
-        arm.base("left", intOrDef(cmd, 2))
-    if(cmd.startswith("!grab")):
-        arm.grip("close", intOrDef(cmd, 1.8))
-    if(cmd.startswith("!drop")):
-        arm.grip("open", intOrDef(cmd, 1.8))
+        arm.base("right", float_or_def(cmd, 2))
+        return
+    if(cmd.startswith("!grab") or cmd.startswith("!close")):
+        arm.grip("close", float_or_def(cmd, 1.8))
+        return
+    if(cmd.startswith("!drop") or cmd.startswith("!open")):
+        arm.grip("open", float_or_def(cmd, 1.8))
+        return
     if(cmd.startswith("!wrist down")):
-        arm.wrist("down", intOrDef(cmd, 2))
+        arm.wrist("down", float_or_def(cmd, 2))
+        return
     if(cmd.startswith("!wrist up")):
-        arm.wrist("up", intOrDef(cmd, 2))
+        arm.wrist("up", float_or_def(cmd, 2))
+        return
     if(cmd.startswith("!elbow down")):
-        arm.elbow("down", intOrDef(cmd, 1.5))
+        arm.elbow("down", float_or_def(cmd, 1.5))
+        return
     if(cmd.startswith("!elbow up")):
-        arm.elbow("up", intOrDef(cmd, 2))
+        arm.elbow("up", float_or_def(cmd, 2))
+        return
     if(cmd.startswith("!shoulder down")):
-        arm.shoulder("down", intOrDef(cmd, 1.5))
+        arm.shoulder("down", float_or_def(cmd, 1.5))
+        return
     if(cmd.startswith("!shoulder up")):
-        arm.shoulder("up", intOrDef(cmd, 2))
+        arm.shoulder("up", float_or_def(cmd, 2))
+        return
+    if(cmd.startswith("!reset") and user == username):
+        arm.reset_halts()
+        return
+    if(cmd.startswith("!threshold") and user == username):
+        arm.threshold = float_or_def(cmd, 10000)
+        return
+    if(cmd.startswith("!solo") and user == username):
+        exp = cmd.split(' ')
+        solo_user = exp[1]
+        solo_time = float_or_def(exp[2], 30)
+        sendmsg(channel, "Giving control to " + solo_user + " for " + str(solo_time) + " seconds")
+        solo_start = time.time()
+        return
+    if(cmd.startswith("!clearsolo") and user == username):
+        solo_user = ""
+        solo_time = 0
+        sendmsg(channel, "Giving control back to Twitch!")
+        return
+    if(cmd.startswith("!com") or cmd.startswith("!help")):
+        sendmsg(channel, "Arm Commands: !<motor> <direction> <seconds 1-4>  Actions Available: led (on off), left, right, grab, drop, wrist (up down), elbow (up down), shoulder (up down)")
+        return
+    if cmd.startswith("!"):
+        sendmsg(channel, "Not a command I understand, try !help")
 
 if __name__ == '__main__':
-    arm = Arm(config.audioDevice, config.threshold)
+    arm = Arm(config.audio_device, config.threshold)
     
     channels = config.channels
     username = config.username
     oauth = config.oauth
+
+    solo_user = ''
+    solo_time = 0
+    solo_start = 0
 
     # Connect to the server using the provided details
     socks = [socket.socket()]
@@ -161,6 +214,9 @@ if __name__ == '__main__':
     temp = 0
     while True:
         (sread,swrite,sexc) = select.select(socks,socks,[],120)
+        # Echo the messages to the channel                   
+        if(len(arm.messages) > 0):
+            sendmsg(channel, arm.messages.pop(0))
         for sock in sread:    
             ''' Receive data from the server '''
             msg = sock.recv(2048)
@@ -186,7 +242,7 @@ if __name__ == '__main__':
                     channel = msg_edit[1].split(' ',2)[2][:-1] # Channel
                     #print(message)
                     #msg_split = str.split(message)
-                    command(message, arm)
+                    command(message, arm, user)
                             
             # ANYTHING TO DO WITH WHISPERS RECIEVED FROM USERS
             check = re.findall('@(.*).tmi.twitch.tv WHISPER (.*) :(.*)',msg)
@@ -198,9 +254,7 @@ if __name__ == '__main__':
                     channel = msg_edit[1].split(' ',2)[2][:-1] # Channel
 
                     whis_split = str.split(message)
-                                   
-     
-
+            
             ''' Respond to server pings '''
             if msg.find('PING :') != -1:
                 print('PING: tmi.twitch.tv > Client')
