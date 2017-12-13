@@ -72,3 +72,7 @@ All movement commands can be ammended with a time in seconds to run.
 - `!elbow up` bends elbow up
 - `!shoulder down` bends shoulder down
 - `!shoulder up` bends shoulder up
+- `!help` Displays command help
+- `!reset` Admin only: Resets the motors positioning and halted statuses
+- `!solo username time` Admin only: gives username solo control for given length of time starting immediately. (Admin still has control)
+- `!clearsolo` Removes solo access

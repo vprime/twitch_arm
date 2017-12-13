@@ -93,7 +93,7 @@ def getmsg(msg):
 
 def float_or_def(string, default):
     if(any(str.isdigit(c) for c in string)):
-        numbers = re.findall("\d+\.\d+|.\d|\d", string)
+        numbers = re.findall("\d+\.\d+|\.\d|\d", string)
         return float(numbers[0])
     return default
 
