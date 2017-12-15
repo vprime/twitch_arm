@@ -40,6 +40,7 @@ import select
 import re
 import config
 import time
+import random
 from twitch import TwitchClient
 from arm_control import Arm
 
@@ -48,6 +49,8 @@ channels = []
 username = ''
 oauth = ''
 subscriber_list = []
+seen_users = []
+last_event = 0
 
 # Definitions to use while connected
 def ping():
@@ -105,7 +108,10 @@ def int_or_def(string, default):
 
 def command(cmd, arm, user):
     cmd = cmd.lower()
-    global solo_user, solo_time, solo_start, username
+    global solo_user, solo_time, solo_start, username, seen_users
+    if cmd.startswith("!") and user != username and user not in seen_users:
+        sendmsg(channel, "Hi, I'm happy to play with you today " + user + "!")
+        seen_users.append(user)
     # Ignore nightbot commands
     if(cmd.startswith("!filters") or cmd.startswith("!poll") or cmd.startswith("!regulars") or cmd.startswith("!songs") or cmd.startswith("!winner") or cmd.startswith("!sr ")):
         return
@@ -152,7 +158,15 @@ def command(cmd, arm, user):
         arm.shoulder("up", float_or_def(cmd, 2))
         return
     if(cmd.startswith("!throw") and check_subscription(user)):
-        arm.sequence(config.seq_throw)
+        arm.sequence(config.sequences["throw"])
+        return
+    if(cmd.startswith("!play") and check_subscription(user)):
+        exp = cmd.split(' ')
+        if exp[1] in config.sequences:
+            arm.sequence(config.sequences[exp[1]])
+        return
+    if cmd.startswith("!random") and user == username:
+        random_move()
         return
     if(cmd.startswith("!reset") and user == username):
         arm.reset_halts()
@@ -197,6 +211,24 @@ def check_subscription(username):
             return True
     return False
 
+def run_idle():
+    global last_event
+    if last_event + config.idle_time < time.time():
+        last_event = time.time()
+        if random.getrandbits(1):
+            idle_name = random.choice(config.idles)
+            arm.sequence(config.sequences[idle_name])
+        else:
+            random_move()
+            
+
+def random_move():
+    idle_motor = random.choice(["base", "grip", "wrist", "elbow","shoulder"])
+    idle_direction = str(random.randint(1,2))
+    idle_time = random.uniform(0.1, 0.5)
+    arm.drive(idle_motor, idle_direction, idle_time)
+
+
 
 if __name__ == '__main__':
     arm = Arm(config.audio_device, config.threshold)
@@ -212,6 +244,8 @@ if __name__ == '__main__':
     solo_user = ''
     solo_time = 0
     solo_start = 0
+    channel = channels[0]
+    last_event = time.time()
 
     # Connect to the server using the provided details
     socks = [socket.socket()]
@@ -246,6 +280,7 @@ if __name__ == '__main__':
         # Echo the messages to the channel                   
         if(len(arm.messages) > 0):
             sendmsg(channel, arm.messages.pop(0))
+        run_idle()
         for sock in sread:    
             ''' Receive data from the server '''
             msg = sock.recv(2048)
@@ -271,6 +306,7 @@ if __name__ == '__main__':
                     channel = msg_edit[1].split(' ',2)[2][:-1] # Channel
                     #print(message)
                     #msg_split = str.split(message)
+                    last_event = time.time()
                     command(message, arm, user)
                             
             # ANYTHING TO DO WITH WHISPERS RECIEVED FROM USERS

@@ -102,8 +102,6 @@ class Motor:
     def next(self):
         if(len(self.queue) > 0):
             action = self.queue.pop(0)
-            print self.name
-            print action
             self.set_action(action[0], action[1], True, True)
 
     # Record the action, and write to the motor
@@ -236,6 +234,9 @@ class Arm:
         for motor in self.motors:
             if motor.name == name:
                 return motor
+    def drive(self, motor, direction, time):
+        motor = self.get_motor(motor)
+        motor.set_action(direction, time)
 
     def base(self, direction, time):
         motor = self.get_motor("base")
