@@ -41,8 +41,10 @@ After you enter setup values, you're able to control the arm with your keyboard 
 take note of the values that work and set them in config.py.
 
 `username` variable is your twitch username
-`oauth` variable is your OAuth Token, you may generate one using this tool https://twitchapps.com/tmi/
-The format should look something like "oauth:mLtoomhN6rJAJQDHR1vZzPN5hVJDL1" (That's not a real one, just an example. This Token is private.)
+`client_id` You need to register your client with twitch, and paste the client ID here.
+`oauth` variable is your OAuth Token, you may generate one using this URL
+`https://api.twitch.tv/kraken/oauth2/authorize?client_id=<your client ID>&redirect_uri=http%3A%2F%2Flocalhost&response_type=token&scope=channel_check_subscription%20channel_subscriptions%20chat_login` It will likely take you to an error page, but don't fret that's the idea! copy the oauth=<token> that shows up in the URL after you accept the scope.
+The format should look something like "mLtoomhN6rJAJQDHR1vZzPN5hVJDL1" (That's not a real one, just an example. This Token is private.)
 
 `channels` variable is a list of the twitch channels which your bot should listen on.
 

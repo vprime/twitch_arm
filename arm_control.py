@@ -43,6 +43,7 @@ import fnmatch
 import sys
 import time
 from pprint import pprint
+from copy import deepcopy
 
 import audioop
 import pyaudio
@@ -52,90 +53,115 @@ import thread
 from pynput import keyboard
 
 class Motor:
-        name = ""
-        device = ""
-        max_time = 0
-        run_time = 0
-        current_action = "0"
-        last_move = "0"
-        halted = False
-        robotic_arm_path = ""
-        count = 0
+    name = ""
+    device = ""
+    max_time = 0
+    run_time = 0
+    current_action = "0"
+    last_move = "0"
+    halted = False
+    robotic_arm_path = ""
+    count = 0
+    start = 0
+    override = False
 
-        STOP = "0"
-        CLOCKWISE = "1"
-        COUNTER_CLOCKWISE = "2"
-        messages = []
+    STOP = "0"
+    CLOCKWISE = "1"
+    COUNTER_CLOCKWISE = "2"
+    messages = []
+    queue = []
 
-        def __init__(self, motor_data, robotic_arm_path):
-            self.name = motor_data[0]
-            self.device = motor_data[1]
-            self.max_time = motor_data[2]
-            self.robotic_arm_path = robotic_arm_path
-            self.path = self.robotic_arm_path + self.device
+    def __init__(self, motor_data, robotic_arm_path):
+        self.name = motor_data[0]
+        self.device = motor_data[1]
+        self.max_time = motor_data[2]
+        self.robotic_arm_path = robotic_arm_path
+        self.path = self.robotic_arm_path + self.device
 
-        # Safely prevent the motor from traveling further.
-        def halt(self):
-            if self.check_motor() != self.STOP:
-                self.halted = True
-                self.set_action(self.STOP)
+    # Safely prevent the motor from traveling further.
+    def halt(self):
+        if self.check_motor() != self.STOP:
+            self.halted = True
+            self.set_action(self.STOP)
 
-        def forward(self, run_time):
-            self.set_action(self.CLOCKWISE, run_time)
+    def forward(self, run_time):
+        self.set_action(self.CLOCKWISE, run_time)
 
-        def backward(self, run_time):
-            self.set_action(self.COUNTER_CLOCKWISE, run_time)
+    def backward(self, run_time):
+        self.set_action(self.COUNTER_CLOCKWISE, run_time)
 
-        def check_motor(self):
-            fd = open(self.path, "r")
-            current = fd.read()
-            fd.close()
-            return current.strip(' \t\n\r')
+    def check_motor(self):
+        fd = open(self.path, "r")
+        current = fd.read()
+        fd.close()
+        return current.strip(' \t\n\r')
 
-        # Record the action, and write to the motor
-        def set_action(self, action, run_time = 0):
-            if self.halted and action == self.last_move:
-                print "Unable to comply, motor halted: " + self.name
+    def set_queue(self, new):
+        self.queue = new
+
+    def next(self):
+        if(len(self.queue) > 0):
+            action = self.queue.pop(0)
+            print self.name
+            print action
+            self.set_action(action[0], action[1], True, True)
+
+    # Record the action, and write to the motor
+    def set_action(self, action, run_time = 0, silent_message=False, override=False):
+        if self.halted and action == self.last_move:
+            print "Unable to comply, motor halted: " + self.name
+            if not silent_message:
                 self.messages.append("Unable to comply, " + self.name + " motor halted in that direction. Reverse to release." )
-                return
-            if self.halted and action != self.STOP:
-                self.halted = False
-            if action != self.STOP and action != self.last_move:
-                self.count = 0
-            if self.count >= self.max_time:
-                self.messages.append("Unable to comply, " + self.name + " has reached it's limit for that direction. Reverse to try again.")
-            self.current_action = action
-            self.run_time = run_time
+            return
+        if self.halted and action != self.STOP:
+            self.halted = False
+        if action != self.STOP and action != self.last_move:
+            self.count = 0
+        if action != self.STOP and self.count >= self.max_time and not silent_message:
+            self.messages.append("Unable to comply, " + self.name + " has reached it's limit for that direction. Reverse to try again.")
+        self.current_action = action
+        self.run_time = run_time
+        self.override = override
+        if override:
+            self.count += run_time
+        else:
             self.count += min(run_time, self.max_time)
-            fd = open(self.path, "w")
-            fd.write(action)
-            self.start = time.time()
-            fd.close()
-            if action != self.STOP:
-                self.last_move = action
+        self.start = time.time()
+        if action != self.STOP:
+            self.last_move = action
 
-        # Runs constantly
-        def update(self):
-            state = self.check_motor()
-            # Stop the motor if it's halted
-            if self.halted and state != self.STOP:
+    # Runs constantly
+    def update(self):
+        state = self.check_motor()
+        updating = False
+        # Stop the motor if it's halted
+        if self.halted and state != self.STOP:
+            self.set_action(self.STOP)
+        # Check the time vs motor's start time
+        now = time.time()
+        if self.CLOCKWISE in state  or self.COUNTER_CLOCKWISE in state:
+            if (not self.override and self.start + self.max_time < now) or self.start + self.run_time < now or (not self.override and self.count > self.max_time):
                 self.set_action(self.STOP)
-            # Check the time vs motor's start time
-            now = time.time()
-            if self.CLOCKWISE in state  or self.COUNTER_CLOCKWISE in state:
-                if self.start + self.max_time < now or self.start + self.run_time < now or self.count > self.max_time:
-                    self.set_action(self.STOP)
+        # run queue
+        if len(self.queue) > 0:
+            if self.start + self.run_time < now:
+                self.next()
+        if self.current_action != state:
+            updating = True
+        return self.path, self.current_action, updating
+
+
 
 class Arm:
     chunk = 1024
     listening = True
 
     device_motors = [
-        ["base", "basemotor", 12],
+        ["base", "basemotor", 20],
         ["grip", "gripmotor", 3],
         ["wrist", "motor2", 6],
-        ["elbow", "motor3", 8],
-        ["shoulder", "motor4", 8]
+        ["elbow", "motor3", 12],
+        ["shoulder", "motor4", 12]
     ]
 
     robotic_arm_path= ""
@@ -183,10 +209,18 @@ class Arm:
     def update_motors(self):
         while True:
             for motor in self.motors:
-                motor.update()
+                (path, action, updated) = motor.update()
+                if updated:
+                    print "updating motor! " + motor.name
+                    self.write_motor(path, action)
                 if(len(motor.messages) > 0):
                     self.messages.append(motor.messages.pop(0))
-            time.sleep(0.01)
+            time.sleep(0.1)
+
+    def write_motor(self, path, action):
+        fd = open(path, "w")
+        fd.write(action)
+        fd.close()
 
     def stop_running_motors(self):
         for motor in self.motors:
@@ -251,6 +285,12 @@ class Arm:
         fd= open(led, "w")
         fd.write("0")
         fd.close()
+
+    def sequence(self, sequence_matrix):
+        self.reset_halts()
+        for motor_name, motor_actions in sequence_matrix.iteritems():
+            m = self.get_motor(motor_name)
+            m.set_queue(deepcopy(motor_actions))
 
     def get_sound_options(self):
         p = pyaudio.PyAudio()

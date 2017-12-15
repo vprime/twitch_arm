@@ -40,13 +40,14 @@ import select
 import re
 import config
 import time
+from twitch import TwitchClient
 from arm_control import Arm
 
 ''' Change the following settings if you wish to run the program '''
 channels = []
 username = ''
 oauth = ''
-
+subscriber_list = []
 
 # Definitions to use while connected
 def ping():
@@ -93,7 +94,7 @@ def getmsg(msg):
 
 def float_or_def(string, default):
     if(any(str.isdigit(c) for c in string)):
-        numbers = re.findall("\d+\.\d+|\.\d|\d", string)
+        numbers = re.findall("\d+\.\d+|\.\d|\d\d|\d", string)
         return float(numbers[0])
     return default
 
@@ -106,7 +107,7 @@ def command(cmd, arm, user):
     cmd = cmd.lower()
     global solo_user, solo_time, solo_start, username
     # Ignore nightbot commands
-    if(cmd.startswith("!filters") or cmd.startswith("!poll") or cmd.startswith("!regulars") or cmd.startswith("!songs") or cmd.startswith("!winner")):
+    if(cmd.startswith("!filters") or cmd.startswith("!poll") or cmd.startswith("!regulars") or cmd.startswith("!songs") or cmd.startswith("!winner") or cmd.startswith("!sr ")):
         return
     if(solo_user and time.time() < solo_start + solo_time and user != username):
         if(user != solo_user):
@@ -150,16 +151,21 @@ def command(cmd, arm, user):
     if(cmd.startswith("!shoulder up")):
         arm.shoulder("up", float_or_def(cmd, 2))
         return
+    if(cmd.startswith("!throw") and check_subscription(user)):
+        arm.sequence(config.seq_throw)
+        return
     if(cmd.startswith("!reset") and user == username):
         arm.reset_halts()
+        global api_client, api_channel
+        update_subscribers(api_client, api_channel)
         return
     if(cmd.startswith("!threshold") and user == username):
-        arm.threshold = float_or_def(cmd, 10000)
+        arm.threshold = int_or_def(cmd, 10000)
         return
     if(cmd.startswith("!solo") and user == username):
         exp = cmd.split(' ')
         solo_user = exp[1]
-        solo_time = float_or_def(exp[2], 30)
+        solo_time = int_or_def(exp[2], 30)
         sendmsg(channel, "Giving control to " + solo_user + " for " + str(solo_time) + " seconds")
         solo_start = time.time()
         return
@@ -174,12 +180,34 @@ def command(cmd, arm, user):
     if cmd.startswith("!"):
         sendmsg(channel, "Not a command I understand, try !help")
 
+def update_subscribers(api_client, api_channel):
+    global subscriber_list
+    subscriber_list = []
+    sub_count = 100
+    iterator = 0
+    while sub_count >= 100:
+        api_subs = api_client.channels.get_subscribers(api_channel.id, 100, iterator, 'asc')
+        iterator += 100
+        sub_count = len(api_subs)
+        subscriber_list.extend(api_subs)
+
+def check_subscription(username):
+    for subscriber in subscriber_list:
+        if subscriber.user.name == username:
+            return True
+    return False
+
+
 if __name__ == '__main__':
     arm = Arm(config.audio_device, config.threshold)
     
     channels = config.channels
     username = config.username
     oauth = config.oauth
+
+    api_client = TwitchClient(config.client_id, config.oauth)
+    api_channel = api_client.channels.get()
+    update_subscribers(api_client, api_channel)
 
     solo_user = ''
     solo_time = 0
@@ -192,7 +220,7 @@ if __name__ == '__main__':
     #socks[1].connect(('GROUP_CHAT_IP',GROUP_CHAT_PORT))
 
     '''Authenticate with the server '''
-    socks[0].send('PASS '+oauth+'\n')
+    socks[0].send('PASS oauth:'+oauth+'\n')
     #socks[1].send('PASS OAUTH_TOKEN\n')
     ''' Assign the client with the nick '''
     socks[0].send('NICK '+username+'\n')
