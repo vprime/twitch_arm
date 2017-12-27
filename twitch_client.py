@@ -41,6 +41,7 @@ import re
 import config
 import time
 import random
+import pickle
 from twitch import TwitchClient
 from arm_control import Arm
 
@@ -51,6 +52,8 @@ oauth = ''
 subscriber_list = []
 seen_users = []
 last_event = 0
+last_chat = 0
+powersave = False
 
 # Definitions to use while connected
 def ping():
@@ -108,12 +111,14 @@ def int_or_def(string, default):
 
 def command(cmd, arm, user):
     cmd = cmd.lower()
-    global solo_user, solo_time, solo_start, username, seen_users
+    global solo_user, solo_time, solo_start, username, seen_users, powersave
+    if cmd.startswith("!"):
+        powersave = False
     if cmd.startswith("!") and user != username and user not in seen_users:
-        sendmsg(channel, "Hi, I'm happy to play with you today " + user + "!")
+        #sendmsg(channel, "Hi, I'm happy to play with you today " + user + "!")
         seen_users.append(user)
     # Ignore nightbot commands
-    if(cmd.startswith("!filters") or cmd.startswith("!poll") or cmd.startswith("!regulars") or cmd.startswith("!songs") or cmd.startswith("!winner") or cmd.startswith("!sr ")):
+    if(cmd.startswith("!filters") or cmd.startswith("!poll") or cmd.startswith("!regulars") or cmd.startswith("!song") or cmd.startswith("!winner") or cmd.startswith("!sr ")):
         return
     if(solo_user and time.time() < solo_start + solo_time and user != username):
         if(user != solo_user):
@@ -157,9 +162,6 @@ def command(cmd, arm, user):
     if(cmd.startswith("!shoulder up")):
         arm.shoulder("up", float_or_def(cmd, 2))
         return
-    if(cmd.startswith("!throw") and check_subscription(user)):
-        arm.sequence(config.sequences["throw"])
-        return
     if(cmd.startswith("!play") and check_subscription(user)):
         exp = cmd.split(' ')
         if exp[1] in config.sequences:
@@ -168,7 +170,7 @@ def command(cmd, arm, user):
     if cmd.startswith("!random") and user == username:
         random_move()
         return
-    if(cmd.startswith("!reset") and user == username):
+    if(cmd.startswith("!reset") and check_subscription(user)):
         arm.reset_halts()
         global api_client, api_channel
         update_subscribers(api_client, api_channel)
@@ -188,9 +190,24 @@ def command(cmd, arm, user):
         solo_time = 0
         sendmsg(channel, "Giving control back to Twitch!")
         return
+    if(cmd.startswith("!idle") and check_subscription(user)):
+        global last_chat, last_event
+        last_chat = 0
+        last_event = 0
+        return
+    if(cmd.startswith("!ps") and user == username):
+        if powersave == True:
+            powersave = False
+        else:
+            powersave = True
+        return
     if(cmd.startswith("!com") or cmd.startswith("!help")):
         sendmsg(channel, "Arm Commands: !<motor> <direction> <seconds 1-4>  Actions Available: led (on off), left, right, grab, drop, wrist (up down), elbow (up down), shoulder (up down)")
         return
+    if cmd.startswith("!") and check_subscription(user):
+        if cmd[1:] in config.subscriber_sequences:
+            arm.sequence(config.sequences[cmd[1:]])
+            return
     if cmd.startswith("!"):
         sendmsg(channel, "Not a command I understand, try !help")
 
@@ -212,8 +229,10 @@ def check_subscription(username):
     return False
 
 def run_idle():
-    global last_event
-    if last_event + config.idle_time < time.time():
+    global last_event, last_chat, powersave
+    if last_chat + config.powersave_time < time.time():
+        powersave = True
+    if not powersave and last_chat + config.idle_wait < time.time() and last_event + config.idle_time < time.time():
         last_event = time.time()
         if random.getrandbits(1):
             idle_name = random.choice(config.idles)
@@ -244,7 +263,6 @@ if __name__ == '__main__':
     solo_user = ''
     solo_time = 0
     solo_start = 0
-    channel = channels[0]
     last_event = time.time()
 
     # Connect to the server using the provided details
@@ -279,7 +297,7 @@ if __name__ == '__main__':
         (sread,swrite,sexc) = select.select(socks,socks,[],120)
         # Echo the messages to the channel                   
         if(len(arm.messages) > 0):
-            sendmsg(channel, arm.messages.pop(0))
+            sendmsg(channels[0], arm.messages.pop(0))
         run_idle()
         for sock in sread:    
             ''' Receive data from the server '''
@@ -306,7 +324,7 @@ if __name__ == '__main__':
                     channel = msg_edit[1].split(' ',2)[2][:-1] # Channel
                     #print(message)
                     #msg_split = str.split(message)
-                    last_event = time.time()
+                    last_chat = time.time()
                     command(message, arm, user)
                             
             # ANYTHING TO DO WITH WHISPERS RECIEVED FROM USERS

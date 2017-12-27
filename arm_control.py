@@ -50,7 +50,7 @@ import pyaudio
 
 import thread
 
-from pynput import keyboard
+#from pynput import keyboard
 
 class Motor:
     name = ""
@@ -209,7 +209,7 @@ class Arm:
             for motor in self.motors:
                 (path, action, updated) = motor.update()
                 if updated:
-                    print "updating motor! " + motor.name
+                    #print "updating motor! " + motor.name
                     self.write_motor(path, action)
                 if(len(motor.messages) > 0):
                     self.messages.append(motor.messages.pop(0))
@@ -333,14 +333,14 @@ class Arm:
         except AttributeError:
             print('special key {0} pressed'.format(
                 key))
-
+    '''
     def on_release(self, key):
         print('{0} released'.format(
             key))
         if key == keyboard.Key.esc:
             # Stop listener
             return False
-
+    '''
     def __init__(self, input_device=False, threshold=False):
         usb_dev_name = self.find_usb_device()
 
@@ -359,10 +359,11 @@ class Arm:
             threshold = raw_input("Threshold is: ")
         self.threshold = int(threshold)
         audio_thread = thread.start_new_thread(self.setup_audio_stream,(int(input_device),))
-
+'''
 if __name__ == '__main__':
     arm = Arm()
 
     # Path for the robotic arm sysfs entries
     with keyboard.Listener(on_press=arm.on_press, on_release=arm.on_release) as listener:
         listener.join()
+'''
