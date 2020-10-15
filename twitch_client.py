@@ -250,7 +250,7 @@ def random_move():
 
 
 if __name__ == '__main__':
-    arm = Arm(config.audio_device, config.threshold)
+    arm = Arm()
     
     channels = config.channels
     username = config.username
