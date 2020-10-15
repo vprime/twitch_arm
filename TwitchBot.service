@@ -1,0 +1,11 @@
+[Unit]
+Description=Twitch Robot Controller
+After=network.target
+
+[Service]
+User=root
+WorkingDirectory=/home/pi/TwitchIO-bot/
+ExecStart=sh /home/pi/TwitchIO-bot/start.sh
+
+[Install]
+WantedBy=multi-user.target

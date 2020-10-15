@@ -8,9 +8,12 @@ Listens for gearbox clicking, and halts movement to prevent damage.
 Based on the robotic_arm_driver example here: 
 https://github.com/maxinbjohn/robotic_arm_driver/blob/master/examples/python/motor.py
 
-MIT License
+Author: Vincent Prime <myself@vincentprime.com>
+--------------
+LICENSE:
 
-Copyright (c) 2017 Vincent Prime
+
+Modified MIT License
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -30,6 +33,10 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
+Restrictions:
+    The software may not be used to operate nuclear facilities, life support 
+    or other mission critical applications where human life or property may be at stake.
+---------------
 
 @@ TODO
  - Add a sanity check for each motor and time ran.
@@ -46,6 +53,8 @@ from pprint import pprint
 from copy import deepcopy
 
 import _thread
+
+#from pynput import keyboard
 
 class Motor:
     name = ""
@@ -113,6 +122,7 @@ class Motor:
             self.count = 0
         if action != self.STOP and self.count >= self.max_time and not silent_message:
             self.messages.append("Unable to comply, " + self.name + " has reached it's limit for that direction. Reverse to try again.")
+        print("setting action to " + action)
         self.current_action = action
         self.run_time = run_time
         self.override = override
@@ -155,12 +165,12 @@ class Arm:
     listening = True
 
     device_motors = [
-        ["base", "basemotor", 20],
-        ["grip", "gripmotor", 3],
-        ["wrist", "motor2", 6],
-        ["elbow", "motor3", 12],
-        ["shoulder", "motor4", 12],
-        ["light", "led", 12]
+        ["base", "basemotor", 30],
+        ["grip", "gripmotor", 6],
+        ["wrist", "motor2", 10],
+        ["elbow", "motor3", 30],
+        ["shoulder", "motor4", 30],
+        ["light", "led", 30]
     ]
 
     robotic_arm_path= ""
@@ -198,6 +208,7 @@ class Arm:
             for motor in self.motors:
                 (path, action, updated) = motor.update()
                 if updated:
+                    print("writing motor: " + path + " Action: " + action)
                     self.write_motor(path, action)
                 if(len(motor.messages) > 0):
                     self.messages.append(motor.messages.pop(0))
@@ -226,6 +237,7 @@ class Arm:
         motor = self.get_motor(motor)
         motor.set_action(direction, time)
 
+    # Turns the base left, and right, over a given time.
     def base(self, direction, time):
         motor = self.get_motor("base")
         if direction == "left":

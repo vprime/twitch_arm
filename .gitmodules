@@ -1,0 +1,4 @@
+[submodule "robotic_arm_driver"]
+	path = robotic_arm_driver
+	url = git@github.com:maxinbjohn/robotic_arm_driver.git
+	branch = master
