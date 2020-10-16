@@ -40,7 +40,7 @@ async def event_ready():
     'Called once when the bot goes online.'
     print(f"{os.environ['BOT_NICK']} is online!")
     ws = bot._ws  # this is only needed to send messages within event_ready
-    await ws.send_privmsg(os.environ['CHANNEL'], f"/me has landed!")
+    await ws.send_privmsg(os.environ['CHANNEL'], f"/me is online!")
 
 
 @bot.event

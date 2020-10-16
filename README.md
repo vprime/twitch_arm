@@ -1,80 +1,68 @@
-# Robotic Arm Controller with Twitch.tv Chat Control and Audio Feedback Control Loop
+# Twitch Robot Controller
 
-Connects the OWI Robot Arm to Twitch, uses audio feedback to prevent gearbox damage.
+This project provides a twitch chat interface for the OWI Robotic arm,
+as well as megapi. It is intended to run on Raspberry Pi, but can be 
+used on any linux computer.
 
-Twitch Client Based on work by LynnAU under the MIT License:
-https://github.com/LynnAU/Twitch-Chat-Bot-V2
+## Setup
+If you're using a camera, I reccomend first installing mjpg_streamer. it provides
+a fast low latency stream you can injest into your streaming software of choice.
 
-Arm Controller Based on the robotic_arm_driver example here: 
-https://github.com/maxinbjohn/robotic_arm_driver/blob/master/examples/python/motor.py
+### Setup Python
+- Requires Python 3.8
+- Download Python, extract the folder.
+- Enter the folder and run the commands
+```
+sudo make -j 4
+sudo make altinstall
+```
+- run `python3.8 -V` to verify you have the right version.
 
-Support this projects, and development of other projects like this on Patreon: 
-https://www.patreon.com/ManOnTheMoonStudio
+### Configuration
+- open the twitch_arm/ directory
+- create a .env file with the following variables
+```
+TMI_TOKEN=oauth:abcd123 	# Twitch oauth key
+CLIENT_ID=oinhaoifsas 		# Twitch client id
+BOT_NICK=my_twitch_robot 	# Twitch client nickname, this matches the bots screename
+BOT_PREFIX=! 				# The character that will prefix all the bot commands.
+CHANNEL=my_twitch_channel 	# The channel the bot will join.
+```
+- Edit the TwitchBot.service file so `WorkingDirectory=` is the same directory as start.sh, and `ExecStart=` points to start.sh.
+- Commands can be configured in the bot.py file.
 
-## Requirements:
-- OWI Robotic Arm
-- USB kit for your Arm
-- Microphone
-- GNU/Linux
-- python
-- pyaudio
-- pynput
-- robotic_arm_driver - https://github.com/maxinbjohn/robotic_arm_driver
+### Setup Run on boot
+- Copy the service file into systemd
+```
+sudo cp TwitchBot.service /etc/systemd/system/TwitchBot.service
+```
+- Reload the daemon, and enable the service.
+```
+sudo systemctl daemon-reload
+sudo systemctl enable TwitchBot
+```
 
+### Running the bot
+- Start the service.
+```
+sudo systemctl start TwitchBot
+```
+- Check on the bot's status
+```
+sudo systemctl status TwitchBot
+```
 
-## Setup:
-
-Install the robotic_arm_driver as per instructions here: https://github.com/maxinbjohn/robotic_arm_driver
-
-Build the arm, and install the USB kit.
-Attach a microphone to your arm, plug the microphone into your computer.
-
-Copy `config.example.py` to `config.py`, edit file with desired parameters.
-
-`audioDevice` is the device index (interger) from the list output when you run `arm_control.py` directly
-`threshold` is an interger of the RMS (Root-Mean-Square) on which will trigger the motor to stop
-
-To determine the best values, run `./arm_control.py` 
-It will allow you to test audio devices, arm connectivity, and threshold values.
-After you enter setup values, you're able to control the arm with your keyboard and you'll see RMS output when it triggers a stop on the motors.
-
-take note of the values that work and set them in config.py.
-
-`username` variable is your twitch username
-`client_id` You need to register your client with twitch, and paste the client ID here.
-`oauth` variable is your OAuth Token, you may generate one using this URL
-`https://api.twitch.tv/kraken/oauth2/authorize?client_id=<your client ID>&redirect_uri=http%3A%2F%2Flocalhost&response_type=token&scope=channel_check_subscription%20channel_subscriptions%20chat_login` It will likely take you to an error page, but don't fret that's the idea! copy the oauth=<token> that shows up in the URL after you accept the scope.
-The format should look something like "mLtoomhN6rJAJQDHR1vZzPN5hVJDL1" (That's not a real one, just an example. This Token is private.)
-
-`channels` variable is a list of the twitch channels which your bot should listen on.
-
-after configuration is complete, run `./twitch_client.py` to begin accepting input from twitch.
-
-### arm_control.py Keyboard Controls
-- LED: 1, 2
-- Rotate base: q, w
-- Grip: a, s
-- Wrist: e, r
-- Elbow: d, f
-- Shoulder: c, v
-- Quit: Esc
 
 ## Twitch Commands
 All movement commands can be ammended with a time in seconds to run.
-- `!ping` a connection test
-- `!light on` Turns on the LED
-- `!light off` Turns off the LED
-- `!left` rotate base left
-- `!right` rotate base right
-- `!grab` closes grip
-- `!drop` opens grip
-- `!wrist down` tilts wrist down
-- `!wrist up` tilts wrist up
-- `!elbow down` bends elbow down
-- `!elbow up` bends elbow up
-- `!shoulder down` bends shoulder down
-- `!shoulder up` bends shoulder up
-- `!help` Displays command help
-- `!reset` Admin only: Resets the motors positioning and halted statuses
-- `!solo username time` Admin only: gives username solo control for given length of time starting immediately. (Admin still has control)
-- `!clearsolo` Removes solo access
+- `!gripopen`  `!go` Opens the grabber
+- `!gripclose`  `!gc` Closes the grabber
+- `!baseleft`  `!bl` Turns the base left
+- `!baseright`  `!br` Turns the base right
+- `!wristup`  `!wu` Tilts the wrist up
+- `!wristdown`  `!wd` Tilts the wrist down
+- `!elboup`  `!eu` Tilts the elbow up
+- `!elbowdown `  `!ed` Tilts the elbow down
+- `!shoulderup`  `!su` Tilts the shoulder up
+- `!shoulderdown`  `!sd` Tilts the shoulder down
+
