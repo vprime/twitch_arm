@@ -18,10 +18,25 @@ sudo make altinstall
 ```
 - run `python3.8 -V` to verify you have the right version.
 
+### Setup Drivers
+- Download the robotic_arm_driver submodule
+- Install your kernel headers this will require
+```
+sudo apt install build-essential raspberrypi-kernel-headers
+```
+- Then compile the driver
+```
+cd ./robotic_arm_driver
+make
+```
+- This should output a robotic_arm.ko file that will be used as the arm's driver.
+
+
 ### Configuration
 - open the twitch_arm/ directory
 - create a .env file with the following variables
 ```
+# ./.env
 TMI_TOKEN=oauth:abcd123 	# Twitch oauth key
 CLIENT_ID=oinhaoifsas 		# Twitch client id
 BOT_NICK=my_twitch_robot 	# Twitch client nickname, this matches the bots screename
