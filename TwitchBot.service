@@ -1,0 +1,11 @@
+[Unit]
+Description=Twitch Robot Controller
+After=network.target
+
+[Service]
+User=root
+WorkingDirectory=/home/pi/twitch_arm/
+ExecStart=sh /home/pi/twitch_arm/start.sh
+
+[Install]
+WantedBy=multi-user.target
