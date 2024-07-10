@@ -110,7 +110,7 @@ class Motor:
             self.set_action(action[0], action[1], True, True)
 
     # Record the action, and write to the motor
-    def set_action(self, action, run_time = 0, silent_message=False, override=False):
+    def set_action(self, action, run_time=0.0, silent_message=False, override=False):
         if self.halted and action == self.last_move:
             print("Unable to comply, motor halted: " + self.name)
             if not silent_message:

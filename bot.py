@@ -1,4 +1,5 @@
 # bot.py
+import math
 import os
 import re
 import fnmatch
@@ -162,6 +163,10 @@ class Bot(commands.Bot):
 
 # Write to the arm device
 def write_motor(device, motor, action, time):
+    if math.isnan(time):
+        time = 1.0
+    if time < 0.1:
+        time = 0.1
     if arm is not None:
         arm.drive(motor, action, time, device)
 
@@ -169,7 +174,7 @@ def write_motor(device, motor, action, time):
 def fod(string, default):
     print("Finding numbers in: " + string)
     if any(str.isdigit(c) for c in string):
-        numbers = re.findall(r'\d+\.\d+|\.\d|\d\d|\d', string)
+        numbers = re.findall(r'\d+[.|,]\d+|[.|,]\d|\d\d|\d', string)
         return float(numbers[0])
     return default
 
