@@ -69,6 +69,7 @@ class Motor:
     start = 0
     override = False
     max_run_time = 4.1
+    disable = False
 
     STOP = "0"
     CLOCKWISE = "1"
@@ -161,10 +162,16 @@ class Motor:
         return self.path, self.current_action, updating
 
 
-def write_motor(path, action):
-    fd = open(path, "w")
-    fd.write(action)
-    fd.close()
+def write_motor(path, action, messages) -> bool:
+    try:
+        with open(path, "w") as f:
+            f.write(action)
+            f.close()
+            return True
+    except Exception as e:
+        print(f"Exception writing to motor: {e}")
+        messages.append("Motor communication error")
+        return False
 
 
 class Arm:
@@ -218,10 +225,13 @@ class Arm:
                 continue
             for device_name, device_motors in self.devices.items():
                 for motor in device_motors:
-                    (path, action, updated) = motor.update()
-                    if updated:
-                        print("writing motor: " + path + " Action: " + action)
-                        write_motor(path, action)
+                    if motor.disable is not True:
+                        (path, action, updated) = motor.update()
+                        if updated:
+                            print("writing motor: " + path + " Action: " + action)
+                            ran = write_motor(path, action, self.messages)
+                            if ran is False:
+                                motor.disable = True
                     if len(motor.messages) > 0:
                         self.messages.append(motor.messages.pop(0))
             time.sleep(0.1)

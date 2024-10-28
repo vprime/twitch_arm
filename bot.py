@@ -3,7 +3,7 @@ import math
 import os
 import re
 import fnmatch
-from twitchio.ext import commands
+from twitchio.ext import commands, routines
 from arm_control import Arm
 
 # Arm Device Names
@@ -15,10 +15,12 @@ SHOULDER = "motor4"
 LIGHT = "led"
 LEFTARM = "l"
 RIGHTARM = "r"
+
 # Device Commands
 STOP = "0"
 CLOCKWISE = "1"
 COUNTER_CLOCKWISE = "2"
+
 # Directional Mapping
 UP = CLOCKWISE
 DOWN = COUNTER_CLOCKWISE
@@ -27,34 +29,8 @@ RIGHT = CLOCKWISE
 OPEN = COUNTER_CLOCKWISE
 CLOSE = CLOCKWISE
 
-#
-# bot = commands.Bot(
-#     # set up the bot
-#     token=os.environ['TMI_TOKEN'],
-#     client_id=os.environ['CLIENT_ID'],
-#     nick=os.environ['BOT_NICK'],
-#     prefix=os.environ['BOT_PREFIX'],
-#     initial_channels=[os.environ['CHANNEL']]
-# )
-#
-#
-# @bot.event
-# async def event_ready():
-#     """Called once when the bot goes online."""
-#     print(f"{os.environ['BOT_NICK']} is online!")
-#
-#
-# @bot.event
-# async def event_message(ctx):
-#     'Runs every time a message is sent in chat.'
-#     await bot.handle_commands(ctx)
-#     # make sure the bot ignores itself and the streamer
-#     if ctx.author.name.lower() == os.environ['BOT_NICK'].lower():
-#         return
 
-
-
-
+# Twitch bot
 class Bot(commands.Bot):
     def __init__(self):
         super().__init__(
@@ -82,95 +58,120 @@ class Bot(commands.Bot):
 
     @commands.command(name='leftgripopen', aliases=['lgo'])
     async def arm_l_gopen(self, ctx: commands.Context):
-        write_motor(LEFTARM, GRIP, OPEN, fod(ctx.message.content, 1.0))
+        await write_motor(ctx, LEFTARM, GRIP, OPEN, fod(ctx.message.content, 1.0))
 
     @commands.command(name='leftgripclose', aliases=['lgc'])
     async def arm_l_gclose(self, ctx: commands.Context):
-        write_motor(LEFTARM, GRIP, CLOSE, fod(ctx.message.content, 1.0))
+        await write_motor(ctx, LEFTARM, GRIP, CLOSE, fod(ctx.message.content, 1.0))
 
     @commands.command(name='leftbaseleft', aliases=['lbl'])
     async def arm_l_bleft(self, ctx: commands.Context):
-        write_motor(LEFTARM, BASE, LEFT, fod(ctx.message.content, 1.0))
+        await write_motor(ctx, LEFTARM, BASE, LEFT, fod(ctx.message.content, 1.0))
 
     @commands.command(name='leftbaseright', aliases=['lbr'])
     async def arm_l_bright(self, ctx: commands.Context):
-        write_motor(LEFTARM, BASE, RIGHT, fod(ctx.message.content, 1.0))
+        await write_motor(ctx, LEFTARM, BASE, RIGHT, fod(ctx.message.content, 1.0))
 
     @commands.command(name='leftwristup', aliases=['lwu'])
     async def arm_l_wup(self, ctx: commands.Context):
-        write_motor(LEFTARM, ELBOW, DOWN, fod(ctx.message.content, 1.0))
+        await write_motor(ctx, LEFTARM, ELBOW, DOWN, fod(ctx.message.content, 1.0))
 
     @commands.command(name='leftwristdown', aliases=['lwd'])
     async def arm_l_wdown(self, ctx: commands.Context):
-        write_motor(LEFTARM, ELBOW, UP, fod(ctx.message.content, 1.0))
+        await write_motor(ctx, LEFTARM, ELBOW, UP, fod(ctx.message.content, 1.0))
 
     @commands.command(name='leftelbowup', aliases=['leu'])
     async def arm_l_eup(self, ctx: commands.Context):
-        write_motor(LEFTARM, WRIST, DOWN, fod(ctx.message.content, 1.0))
+        await write_motor(ctx, LEFTARM, WRIST, DOWN, fod(ctx.message.content, 1.0))
 
     @commands.command(name='leftelbowdown', aliases=['led'])
     async def arm_l_edown(self, ctx: commands.Context):
-        write_motor(LEFTARM, WRIST, UP, fod(ctx.message.content, 1.0))
+        await write_motor(ctx, LEFTARM, WRIST, UP, fod(ctx.message.content, 1.0))
 
     @commands.command(name='leftshoulderup', aliases=['lsu'])
     async def arm_l_sup(self, ctx: commands.Context):
-        write_motor(LEFTARM, SHOULDER, UP, fod(ctx.message.content, 1.0))
+        await write_motor(ctx, LEFTARM, SHOULDER, UP, fod(ctx.message.content, 1.0))
 
     @commands.command(name='leftshoulderdown', aliases=['lsd'])
     async def arm_l_sdown(self, ctx: commands.Context):
-        write_motor(LEFTARM, SHOULDER, DOWN, fod(ctx.message.content, 1.0))
+        await write_motor(ctx, LEFTARM, SHOULDER, DOWN, fod(ctx.message.content, 1.0))
 
     @commands.command(name='rightgripopen', aliases=['rgo'])
     async def arm_r_gopen(self, ctx: commands.Context):
-        write_motor(RIGHTARM, GRIP, OPEN, fod(ctx.message.content, 1.0))
+        await write_motor(ctx, RIGHTARM, GRIP, OPEN, fod(ctx.message.content, 1.0))
 
     @commands.command(name='rightgripclose', aliases=['rgc'])
     async def arm_r_gclose(self, ctx: commands.Context):
-        write_motor(RIGHTARM, GRIP, CLOSE, fod(ctx.message.content, 1.0))
+        await write_motor(ctx, RIGHTARM, GRIP, CLOSE, fod(ctx.message.content, 1.0))
 
     @commands.command(name='rightbaseleft', aliases=['rbl'])
     async def arm_r_bleft(self, ctx: commands.Context):
-        write_motor(RIGHTARM, BASE, LEFT, fod(ctx.message.content, 1.0))
+        await write_motor(ctx, RIGHTARM, BASE, LEFT, fod(ctx.message.content, 1.0))
 
     @commands.command(name='rightbaseright', aliases=['rbr'])
     async def arm_r_bright(self, ctx: commands.Context):
-        write_motor(RIGHTARM, BASE, RIGHT, fod(ctx.message.content, 1.0))
+        await write_motor(ctx, RIGHTARM, BASE, RIGHT, fod(ctx.message.content, 1.0))
 
     @commands.command(name='rightwristup', aliases=['rwu'])
     async def arm_r_wup(self, ctx: commands.Context):
-        write_motor(RIGHTARM, ELBOW, DOWN, fod(ctx.message.content, 1.0))
+        await write_motor(ctx, RIGHTARM, ELBOW, DOWN, fod(ctx.message.content, 1.0))
 
     @commands.command(name='rightwristdown', aliases=['rwd'])
     async def arm_r_wdown(self, ctx: commands.Context):
-        write_motor(RIGHTARM, ELBOW, UP, fod(ctx.message.content, 1.0))
+        await write_motor(ctx, RIGHTARM, ELBOW, UP, fod(ctx.message.content, 1.0))
 
     @commands.command(name='rightelbowup', aliases=['reu'])
     async def arm_r_eup(self, ctx: commands.Context):
-        write_motor(RIGHTARM, WRIST, DOWN, fod(ctx.message.content, 1.0))
+        await write_motor(ctx, RIGHTARM, WRIST, DOWN, fod(ctx.message.content, 1.0))
 
     @commands.command(name='rightelbowdown', aliases=['red'])
     async def arm_r_edown(self, ctx: commands.Context):
-        write_motor(RIGHTARM, WRIST, UP, fod(ctx.message.content, 1.0))
+        await write_motor(ctx, RIGHTARM, WRIST, UP, fod(ctx.message.content, 1.0))
 
     @commands.command(name='rightshoulderup', aliases=['rsu'])
     async def arm_r_sup(self, ctx: commands.Context):
-        write_motor(RIGHTARM, SHOULDER, UP, fod(ctx.message.content, 1.0))
+        await write_motor(ctx, RIGHTARM, SHOULDER, UP, fod(ctx.message.content, 1.0))
 
     @commands.command(name='rightshoulderdown', aliases=['rsd'])
     async def arm_r_sdown(self, ctx: commands.Context):
-        write_motor(RIGHTARM, SHOULDER, DOWN, fod(ctx.message.content, 1.0))
+        await write_motor(ctx, RIGHTARM, SHOULDER, DOWN, fod(ctx.message.content, 1.0))
+
+    @commands.command(name='help', aliases=['h', 'cmd', 'command', 'commands', 'man', 'manual'])
+    async def help(self, ctx: commands.Context):
+        message = '''
+        Each motor has it's own command, and takes an argument for time in seconds between 0.0 and 4.0.
+        
+        \nLeft arm:
+        \nGrip: !lgo, !lgc
+        \nWrist: !lwu, !lwd
+        \nElbow: !leu, !led
+        \nShoulder: !lsu, !lsd
+        \nBase: !lbr, !lbl
+        \n
+        \nRight arm:
+        \nGrip: !rgo, !rgc
+        \nWrist: !rwu, !rwd
+        \nElbow: !reu, !red
+        \nShoulder: !rsu, !rsd
+        \nBase: !rbr, !rbl
+        '''
+        await ctx.send(message)
 
 
 # Write to the arm device
-def write_motor(device, motor, action, time):
+async def write_motor(ctx: commands.Context, device, motor, action, time):
     if math.isnan(time):
         time = 1.0
     if time < 0.1:
         time = 0.1
     if arm is not None:
         arm.drive(motor, action, time, device)
+        while len(arm.messages) > 0:
+            message = arm.messages.pop(0)
+            await ctx.send(message)
 
-
+# Float or Default
+# Find a number, or return the default
 def fod(string, default):
     print("Finding numbers in: " + string)
     if any(str.isdigit(c) for c in string):
@@ -178,7 +179,7 @@ def fod(string, default):
         return float(numbers[0])
     return default
 
-
+# Find USB devices that should match the device we're using
 def find_usb_devices():
     result = {}
     for file in os.listdir('/sys/bus/usb/drivers/robotic_arm/'):
@@ -189,7 +190,7 @@ def find_usb_devices():
 
 arm = Arm(find_usb_devices())
 
-
+# Loop through found devices, assign them to left or right values.
 def setup_arms():
     new_keys = []
     for key, value in arm.devices.items():
@@ -200,7 +201,7 @@ def setup_arms():
         new_keys.append((key, arm_name))
     arm.remap_names(new_keys)
 
-
+# Main program
 if __name__ == "__main__":
     setup_arms()
     bot = Bot()
