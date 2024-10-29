@@ -249,13 +249,13 @@ class Arm:
             time.sleep(0.1)
 
     def stop_running_motors(self):
-        for device in self.devices:
-            for motor in device:
+        for device_name, device_motors in self.devices.items():
+            for motor in device_motors:
                 motor.halt()
 
     def reset_halts(self):
-        for device in self.devices:
-            for motor in device:
+        for device_name, device_motors in self.devices.items():
+            for motor in device_motors:
                 motor.halted = False
                 motor.count = 0
 
