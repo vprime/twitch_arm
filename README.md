@@ -9,7 +9,7 @@ If you're using a camera, I reccomend first installing mjpg_streamer. it provide
 a fast low latency stream you can injest into your streaming software of choice.
 
 ### Setup Python
-- Requires Python 3.8
+- Requires Python 3.12
 - Download Python, extract the folder.
 - Enter the folder and run the commands
 ```
@@ -46,6 +46,13 @@ CHANNEL=my_twitch_channel 	# The channel the bot will join.
 - Edit the TwitchBot.service file so `WorkingDirectory=` is the same directory as start.sh, and `ExecStart=` points to start.sh.
 - Commands can be configured in the bot.py file.
 
+### Running the bot manually
+- Install the kernel module `insmod robotic_arm_driver/robotic_arm.ko`
+- Configure permissions on the devices `sudo chmod -R 777 /sys/bus/usb/drivers/robotic_arm/*`
+- Run the bot `pipenv run python bot.py`
+- The script will search for available devices, and move one at a time and ask for an "l" or "r" to define the left and right arm.
+- Once the devices are discovered, you will see a message "Logged in as | <USERNAME>". Your robot is now online!
+
 ### Setup Run on boot
 - Copy the service file into systemd
 ```
@@ -57,7 +64,7 @@ sudo systemctl daemon-reload
 sudo systemctl enable TwitchBot
 ```
 
-### Running the bot
+### Running the bot rom systemctl
 - Start the service.
 ```
 sudo systemctl start TwitchBot
