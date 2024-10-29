@@ -139,23 +139,27 @@ class Bot(commands.Bot):
     @commands.command(name='help', aliases=['h', 'cmd', 'command', 'commands', 'man', 'manual'])
     async def help(self, ctx: commands.Context):
         message = '''
-        Each motor has it's own command, and takes an argument for time in seconds between 0.0 and 4.0.
-        
-        \nLeft arm:
-        \nGrip: !lgo, !lgc
-        \nWrist: !lwu, !lwd
-        \nElbow: !leu, !led
-        \nShoulder: !lsu, !lsd
-        \nBase: !lbr, !lbl
-        \n
-        \nRight arm:
-        \nGrip: !rgo, !rgc
-        \nWrist: !rwu, !rwd
-        \nElbow: !reu, !red
-        \nShoulder: !rsu, !rsd
-        \nBase: !rbr, !rbl
+        \n\r **Left arm:**
+        \n\r - Grip: !lgo, !lgc
+        \n\r - Wrist: !lwu, !lwd
+        \n\r - Elbow: !leu, !led
+        \n\r - Shoulder: !lsu, !lsd
+        \n\r - Base: !lbr, !lbl
+        \n\r
+        \n\r **Right arm:**
+        \n\r - Grip: !rgo, !rgc
+        \n\r - Wrist: !rwu, !rwd
+        \n\r - Elbow: !reu, !red
+        \n\r - Shoulder: !rsu, !rsd
+        \n\r - Base: !rbr, !rbl
         '''
         await ctx.send(message)
+
+    @routines.routine(minutes=3)
+    async def reset_arm(self):
+        # Every 3 minutes
+        # Clear movement counters on the arm
+        arm.reset_halts()
 
 
 # Write to the arm device

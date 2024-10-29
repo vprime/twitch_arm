@@ -97,10 +97,15 @@ class Motor:
         self.set_action(self.COUNTER_CLOCKWISE, run_time)
 
     def check_motor(self):
-        fd = open(self.path, "r")
-        current = fd.read()
-        fd.close()
-        return current.strip(' \t\n\r')
+        try:
+            with open(self.path, "r") as fd:
+                current = fd.read()
+                fd.close()
+                return current.strip(' \t\n\r')
+        except Exception as e:
+            print(e)
+            self.disable = True
+            return self.current_action
 
     def set_queue(self, new):
         self.queue = new
@@ -112,6 +117,9 @@ class Motor:
 
     # Record the action, and write to the motor
     def set_action(self, action, run_time=0.0, silent_message=False, override=False):
+        if self.disable:
+            self.messages.append("Unable to comply, " + self.name + " motor has lost communication." )
+            return
         if self.halted and action == self.last_move:
             print("Unable to comply, motor halted: " + self.name)
             if not silent_message:
@@ -169,7 +177,7 @@ def write_motor(path, action, messages) -> bool:
             f.close()
             return True
     except Exception as e:
-        print(f"Exception writing to motor: {e}")
+        print(f"!!! Exception writing to motor: {e}")
         messages.append("Motor communication error")
         return False
 
@@ -217,6 +225,10 @@ class Arm:
         pprint.pprint(self.devices)
         return _thread.start_new_thread(self.update_motors, ())
 
+    def self_test(self):
+        for device_name, device_motors in self.devices.items():
+            for motor in device_motors:
+                motor.check_motor()
     # Run the update on motors
     def update_motors(self):
         while True:
