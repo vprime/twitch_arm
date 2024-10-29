@@ -47,14 +47,13 @@ Restrictions:
 
 import os
 import fnmatch
+import pprint
 import sys
 import time
-from pprint import pprint
 from copy import deepcopy
 
 import _thread
 
-#from pynput import keyboard
 
 class Motor:
     name = ""
@@ -69,6 +68,8 @@ class Motor:
     count = 0
     start = 0
     override = False
+    max_run_time = 4.1
+    disable = False
 
     STOP = "0"
     CLOCKWISE = "1"
@@ -96,21 +97,29 @@ class Motor:
         self.set_action(self.COUNTER_CLOCKWISE, run_time)
 
     def check_motor(self):
-        fd = open(self.path, "r")
-        current = fd.read()
-        fd.close()
-        return current.strip(' \t\n\r')
+        try:
+            with open(self.path, "r") as fd:
+                current = fd.read()
+                fd.close()
+                return current.strip(' \t\n\r')
+        except Exception as e:
+            print(e)
+            self.disable = True
+            return self.current_action
 
     def set_queue(self, new):
         self.queue = new
 
     def next(self):
-        if(len(self.queue) > 0):
+        if len(self.queue) > 0:
             action = self.queue.pop(0)
             self.set_action(action[0], action[1], True, True)
 
     # Record the action, and write to the motor
-    def set_action(self, action, run_time = 0, silent_message=False, override=False):
+    def set_action(self, action, run_time=0.0, silent_message=False, override=False):
+        if self.disable:
+            self.messages.append("Unable to comply, " + self.name + " motor has lost communication." )
+            return
         if self.halted and action == self.last_move:
             print("Unable to comply, motor halted: " + self.name)
             if not silent_message:
@@ -124,6 +133,8 @@ class Motor:
             self.messages.append("Unable to comply, " + self.name + " has reached it's limit for that direction. Reverse to try again.")
         print("setting action to " + action)
         self.current_action = action
+        if run_time > self.max_run_time:
+            run_time = self.max_run_time
         self.run_time = run_time
         self.override = override
         if override:
@@ -143,7 +154,7 @@ class Motor:
             self.set_action(self.STOP)
         # Check the time vs motor's start time
         now = time.time()
-        if self.CLOCKWISE in state  or self.COUNTER_CLOCKWISE in state:
+        if self.CLOCKWISE in state or self.COUNTER_CLOCKWISE in state:
             if not self.override and self.start + self.max_time < now: 
                 self.set_action(self.STOP)
             if self.run_time > self.min_time and self.start + self.run_time < now:
@@ -159,6 +170,17 @@ class Motor:
         return self.path, self.current_action, updating
 
 
+def write_motor(path, action, messages) -> bool:
+    try:
+        with open(path, "w") as f:
+            f.write(action)
+            f.close()
+            return True
+    except Exception as e:
+        print(f"!!! Exception writing to motor: {e}")
+        messages.append("Motor communication error")
+        return False
+
 
 class Arm:
     chunk = 1024
@@ -173,122 +195,118 @@ class Arm:
         ["light", "led", 30]
     ]
 
-    robotic_arm_path= ""
-
-    motors = []
     messages = []
+    paths = {}
+    devices = {}
+    paused = False
 
-    def __init__(self):
-        usb_dev_name = self.find_usb_device()
-
-        if ( usb_dev_name == None):
+    def __init__(self, device_paths):
+        self.paths = device_paths
+        if len(self.paths) == 0:
             print("Please ensure that robotic_arm module is loaded ")
             print(" Also ensure that you have connected the robotic arm ")
             print(" and switched on the Robotic ARM device")
             sys.exit(-1)
+        self.motor_update_thread = self.setup_motors()
 
-        self.setup_motors()
-
-    """ Locate the sysfs entry corresponding to USB Robotic ARM """
-    def find_usb_device(self):
-        for file in os.listdir('/sys/bus/usb/drivers/robotic_arm/'):
-            if fnmatch.fnmatch(file, '*:*'):
-                self.robotic_arm_path = "/sys/bus/usb/drivers/robotic_arm/"+ file + "/"
-                return file
+    def remap_names(self, mapping):
+        self.paused = True
+        time.sleep(0.5)
+        for (old, new) in mapping:
+            self.devices[new] = self.devices.pop(old)
+        self.paused = False
 
     def setup_motors(self):
-        for motor_data in self.device_motors:
-            motor = Motor(motor_data, self.robotic_arm_path)
-            self.motors.append(motor)
-        motor_update_thread = _thread.start_new_thread(self.update_motors, ())
+        for device, path in self.paths.items():
+            self.devices[device] = []
+            for motor_data in self.device_motors:
+                motor = Motor(motor_data, path)
+                self.devices[device].append(motor)
+        pprint.pprint(self.devices)
+        return _thread.start_new_thread(self.update_motors, ())
 
+    def self_test(self):
+        for device_name, device_motors in self.devices.items():
+            for motor in device_motors:
+                motor.check_motor()
     # Run the update on motors
     def update_motors(self):
         while True:
-            for motor in self.motors:
-                (path, action, updated) = motor.update()
-                if updated:
-                    print("writing motor: " + path + " Action: " + action)
-                    self.write_motor(path, action)
-                if(len(motor.messages) > 0):
-                    self.messages.append(motor.messages.pop(0))
+            if self.paused:
+                time.sleep(1)
+                continue
+            for device_name, device_motors in self.devices.items():
+                for motor in device_motors:
+                    if motor.disable is not True:
+                        (path, action, updated) = motor.update()
+                        if updated:
+                            print("writing motor: " + path + " Action: " + action)
+                            ran = write_motor(path, action, self.messages)
+                            if ran is False:
+                                motor.disable = True
+                    if len(motor.messages) > 0:
+                        self.messages.append(motor.messages.pop(0))
             time.sleep(0.1)
 
-    def write_motor(self, path, action):
-        fd = open(path, "w")
-        fd.write(action)
-        fd.close()
-
     def stop_running_motors(self):
-        for motor in self.motors:
-            motor.halt()
+        for device in self.devices:
+            for motor in device:
+                motor.halt()
 
     def reset_halts(self):
-        for motor in self.motors:
-            motor.halted = False
-            motor.count = 0
+        for device in self.devices:
+            for motor in device:
+                motor.halted = False
+                motor.count = 0
 
     """ Run motors """
-    def get_motor(self, name):
-        for motor in self.motors:
+    def get_motor(self, name, device_name):
+        for motor in self.devices[device_name]:
             if motor.name == name or motor.device == name:
                 return motor
-    def drive(self, motor, direction, time):
-        motor = self.get_motor(motor)
-        motor.set_action(direction, time)
+
+    def drive(self, motor, direction, duration, device):
+        motor = self.get_motor(motor, device)
+        motor.set_action(direction, duration)
 
     # Turns the base left, and right, over a given time.
-    def base(self, direction, time):
-        motor = self.get_motor("base")
+    def base(self, direction, duration, device):
+        motor = self.get_motor("base", device)
         if direction == "left":
-            motor.backward(time)
+            motor.backward(duration)
         if direction == "right":
-            motor.forward(time)
+            motor.forward(duration)
 
-    def grip(self, direction, time):
-        motor = self.get_motor("grip")
+    def grip(self, direction, duration, device):
+        motor = self.get_motor("grip", device)
         if direction == "close":
-            motor.forward(time)
+            motor.forward(duration)
         if direction == "open":
-            motor.backward(time)
+            motor.backward(duration)
 
-    def wrist(self, direction, time):
-        motor = self.get_motor("wrist")
+    def wrist(self, direction, duration, device):
+        motor = self.get_motor("wrist", device)
         if direction == "up":
-            motor.forward(time)
+            motor.forward(duration)
         if direction == "down":
-            motor.backward(time)
+            motor.backward(duration)
 
-    def elbow(self, direction, time):
-        motor = self.get_motor("elbow")
+    def elbow(self, direction, duration, device):
+        motor = self.get_motor("elbow", device)
         if direction == "up":
-            motor.forward(time)
+            motor.forward(duration)
         if direction == "down":
-            motor.backward(time)
+            motor.backward(duration)
 
-    def shoulder(self, direction, time):
-        motor = self.get_motor("shoulder")
+    def shoulder(self, direction, duration, device):
+        motor = self.get_motor("shoulder", device)
         if direction == "up":
-            motor.forward(time)
+            motor.forward(duration)
         if direction == "down":
-            motor.backward(time)
+            motor.backward(duration)
 
-        
-    """ To switch on LED in Robotic ARM """
-    def led_on(self):
-        led = self.robotic_arm_path + "led"
-        fd= open(led, "w")
-        fd.write("1")
-        fd.close()
-
-    def led_off(self):
-        led = self.robotic_arm_path + "led"
-        fd= open(led, "w")
-        fd.write("0")
-        fd.close()
-
-    def sequence(self, sequence_matrix):
+    def sequence(self, sequence_matrix, device):
         self.reset_halts()
         for motor_name, motor_actions in sequence_matrix.iteritems():
-            m = self.get_motor(motor_name)
+            m = self.get_motor(motor_name, device)
             m.set_queue(deepcopy(motor_actions))
