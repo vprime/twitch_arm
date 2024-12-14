@@ -13,8 +13,8 @@ from enum import Enum
 # Arm Device Names
 BASE = "basemotor"
 GRIP = "gripmotor"
-WRIST = "motor2"
-ELBOW = "motor3"
+ELBOW = "motor2"
+WRIST = "motor3"
 SHOULDER = "motor4"
 LIGHT = "led"
 LEFTARM = "l"
@@ -63,7 +63,7 @@ class Bot(commands.Bot):
 
     async def split_arg(self, arg):
         if len(arg) < 3:
-            return
+            return False
         arm_selected = None
         motor_selected = None
         direction_selected = None
@@ -71,19 +71,18 @@ class Bot(commands.Bot):
             match i:
                 case 0:
                     arm_selected = self.select_arm(char)
-                    break
                 case 1:
                     motor_selected = self.select_motor(char)
-                    break
                 case 2:
                     direction_selected = self.select_direction(char)
-                    break
         time_selected = fod(arg[3:], 1.0)
         if (arm_selected is not None
                 and motor_selected is not None
                 and direction_selected is not None
                 and time_selected is not None):
             await write_motor(arm_selected, motor_selected, direction_selected, time_selected)
+            return True
+        return False
 
     @staticmethod
     def select_arm(value):
@@ -130,88 +129,114 @@ class Bot(commands.Bot):
         return response
     @commands.command(name='chain', aliases=['c', '!'])
     async def chain(self, ctx:commands.Context):
-        for arg in ctx.args:
-            await self.split_arg(arg)
+        args = ""
+        for arg in ctx.message.content.split():
+            if len(arg) < 3:
+                continue
+            if await self.split_arg(arg):
+                args += " " + arg
+        if len(args) > 1:
+            self.chat_logger.msg(f'{ctx.author.name}:{args}')
 
     @commands.command(name='leftgripopen', aliases=['lgo'])
     async def arm_l_gopen(self, ctx: commands.Context):
         await write_motor(LEFTARM, GRIP, OPEN, fod(ctx.message.content, 1.0))
+        self.chat_logger.msg(f'{ctx.author.name}:lgo')
 
     @commands.command(name='leftgripclose', aliases=['lgc'])
     async def arm_l_gclose(self, ctx: commands.Context):
         await write_motor(LEFTARM, GRIP, CLOSE, fod(ctx.message.content, 1.0))
+        self.chat_logger.msg(f'{ctx.author.name}:lgc')
 
     @commands.command(name='leftbaseleft', aliases=['lbl'])
     async def arm_l_bleft(self, ctx: commands.Context):
         await write_motor(LEFTARM, BASE, LEFT, fod(ctx.message.content, 1.0))
+        self.chat_logger.msg(f'{ctx.author.name}:lbl')
 
     @commands.command(name='leftbaseright', aliases=['lbr'])
     async def arm_l_bright(self, ctx: commands.Context):
         await write_motor(LEFTARM, BASE, RIGHT, fod(ctx.message.content, 1.0))
+        self.chat_logger.msg(f'{ctx.author.name}:lbr')
 
     @commands.command(name='leftwristup', aliases=['lwu'])
     async def arm_l_wup(self, ctx: commands.Context):
-        await write_motor(LEFTARM, ELBOW, DOWN, fod(ctx.message.content, 1.0))
+        await write_motor(LEFTARM, WRIST, UP, fod(ctx.message.content, 1.0))
+        self.chat_logger.msg(f'{ctx.author.name}:lwu')
 
     @commands.command(name='leftwristdown', aliases=['lwd'])
     async def arm_l_wdown(self, ctx: commands.Context):
-        await write_motor(LEFTARM, ELBOW, UP, fod(ctx.message.content, 1.0))
+        await write_motor(LEFTARM, WRIST, DOWN, fod(ctx.message.content, 1.0))
+        self.chat_logger.msg(f'{ctx.author.name}:lwd')
 
     @commands.command(name='leftelbowup', aliases=['leu'])
     async def arm_l_eup(self, ctx: commands.Context):
-        await write_motor(LEFTARM, WRIST, DOWN, fod(ctx.message.content, 1.0))
+        await write_motor(LEFTARM, ELBOW, UP, fod(ctx.message.content, 1.0))
+        self.chat_logger.msg(f'{ctx.author.name}:leu')
 
     @commands.command(name='leftelbowdown', aliases=['led'])
     async def arm_l_edown(self, ctx: commands.Context):
-        await write_motor(LEFTARM, WRIST, UP, fod(ctx.message.content, 1.0))
+        await write_motor(LEFTARM, ELBOW, DOWN, fod(ctx.message.content, 1.0))
+        self.chat_logger.msg(f'{ctx.author.name}:led')
 
     @commands.command(name='leftshoulderup', aliases=['lsu'])
     async def arm_l_sup(self, ctx: commands.Context):
         await write_motor(LEFTARM, SHOULDER, UP, fod(ctx.message.content, 1.0))
+        self.chat_logger.msg(f'{ctx.author.name}:lsu')
 
     @commands.command(name='leftshoulderdown', aliases=['lsd'])
     async def arm_l_sdown(self, ctx: commands.Context):
         await write_motor(LEFTARM, SHOULDER, DOWN, fod(ctx.message.content, 1.0))
+        self.chat_logger.msg(f'{ctx.author.name}:lsd')
 
     @commands.command(name='rightgripopen', aliases=['rgo'])
     async def arm_r_gopen(self, ctx: commands.Context):
         await write_motor(RIGHTARM, GRIP, OPEN, fod(ctx.message.content, 1.0))
+        self.chat_logger.msg(f'{ctx.author.name}:rgo')
 
     @commands.command(name='rightgripclose', aliases=['rgc'])
     async def arm_r_gclose(self, ctx: commands.Context):
         await write_motor(RIGHTARM, GRIP, CLOSE, fod(ctx.message.content, 1.0))
+        self.chat_logger.msg(f'{ctx.author.name}:rgc')
 
     @commands.command(name='rightbaseleft', aliases=['rbl'])
     async def arm_r_bleft(self, ctx: commands.Context):
         await write_motor(RIGHTARM, BASE, LEFT, fod(ctx.message.content, 1.0))
+        self.chat_logger.msg(f'{ctx.author.name}:rbl')
 
     @commands.command(name='rightbaseright', aliases=['rbr'])
     async def arm_r_bright(self, ctx: commands.Context):
         await write_motor(RIGHTARM, BASE, RIGHT, fod(ctx.message.content, 1.0))
+        self.chat_logger.msg(f'{ctx.author.name}:rbr')
 
     @commands.command(name='rightwristup', aliases=['rwu'])
     async def arm_r_wup(self, ctx: commands.Context):
-        await write_motor(RIGHTARM, ELBOW, DOWN, fod(ctx.message.content, 1.0))
+        await write_motor(RIGHTARM, WRIST, UP, fod(ctx.message.content, 1.0))
+        self.chat_logger.msg(f'{ctx.author.name}:rwu')
 
     @commands.command(name='rightwristdown', aliases=['rwd'])
     async def arm_r_wdown(self, ctx: commands.Context):
-        await write_motor(RIGHTARM, ELBOW, UP, fod(ctx.message.content, 1.0))
+        await write_motor(RIGHTARM, WRIST, DOWN, fod(ctx.message.content, 1.0))
+        self.chat_logger.msg(f'{ctx.author.name}:rwd')
 
     @commands.command(name='rightelbowup', aliases=['reu'])
     async def arm_r_eup(self, ctx: commands.Context):
-        await write_motor(RIGHTARM, WRIST, DOWN, fod(ctx.message.content, 1.0))
+        await write_motor(RIGHTARM, ELBOW, UP, fod(ctx.message.content, 1.0))
+        self.chat_logger.msg(f'{ctx.author.name}:reu')
 
     @commands.command(name='rightelbowdown', aliases=['red'])
     async def arm_r_edown(self, ctx: commands.Context):
-        await write_motor(RIGHTARM, WRIST, UP, fod(ctx.message.content, 1.0))
+        await write_motor(RIGHTARM, ELBOW, DOWN, fod(ctx.message.content, 1.0))
+        self.chat_logger.msg(f'{ctx.author.name}:red')
 
     @commands.command(name='rightshoulderup', aliases=['rsu'])
     async def arm_r_sup(self, ctx: commands.Context):
         await write_motor(RIGHTARM, SHOULDER, UP, fod(ctx.message.content, 1.0))
+        self.chat_logger.msg(f'{ctx.author.name}:rsu')
 
     @commands.command(name='rightshoulderdown', aliases=['rsd'])
     async def arm_r_sdown(self, ctx: commands.Context):
         await write_motor(RIGHTARM, SHOULDER, DOWN, fod(ctx.message.content, 1.0))
+        self.chat_logger.msg(f'{ctx.author.name}:rsd')
 
     @commands.command(name='help', aliases=['h', 'cmd', 'command', 'commands', 'man', 'manual'])
     async def help(self, ctx: commands.Context):
