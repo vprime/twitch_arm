@@ -1,6 +1,9 @@
 # configuration file
 config.py
 
+# ide folder
+.idea
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
