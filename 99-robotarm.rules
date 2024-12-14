@@ -1,0 +1,1 @@
+DRIVER=="robotic_arm", MODE="0777", SYMLINK +="robot_arm%n"

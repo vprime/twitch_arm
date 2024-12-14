@@ -51,6 +51,7 @@ import pprint
 import sys
 import time
 from copy import deepcopy
+from chat_log import ChatLog
 
 import _thread
 
@@ -74,8 +75,8 @@ class Motor:
     STOP = "0"
     CLOCKWISE = "1"
     COUNTER_CLOCKWISE = "2"
-    messages = []
     queue = []
+    log = ChatLog()
 
     def __init__(self, motor_data, robotic_arm_path):
         self.name = motor_data[0]
@@ -118,20 +119,18 @@ class Motor:
     # Record the action, and write to the motor
     def set_action(self, action, run_time=0.0, silent_message=False, override=False):
         if self.disable:
-            self.messages.append("Unable to comply, " + self.name + " motor has lost communication." )
+            self.log.err(self.name, " motor has lost communication." )
             return
         if self.halted and action == self.last_move:
-            print("Unable to comply, motor halted: " + self.name)
             if not silent_message:
-                self.messages.append("Unable to comply, " + self.name + " motor halted in that direction. Reverse to release." )
+                self.log.err(self.name," motor halted in that direction. Reverse to release." )
             return
         if self.halted and action != self.STOP:
             self.halted = False
         if action != self.STOP and action != self.last_move:
             self.count = 0
         if action != self.STOP and self.count >= self.max_time and not silent_message:
-            self.messages.append("Unable to comply, " + self.name + " has reached it's limit for that direction. Reverse to try again.")
-        print("setting action to " + action)
+            self.log.err(self.name," has reached it's limit for that direction. Reverse to try again.")
         self.current_action = action
         if run_time > self.max_run_time:
             run_time = self.max_run_time
@@ -144,6 +143,17 @@ class Motor:
         self.start = time.time()
         if action != self.STOP:
             self.last_move = action
+
+    def write_motor(self, path, action) -> bool:
+        try:
+            with open(path, "w") as f:
+                f.write(action)
+                f.close()
+                return True
+        except Exception as e:
+            print(f"!!! Exception writing to motor: {e}")
+            self.log.err("Driver","Motor communication error")
+            return False
 
     # Runs constantly
     def update(self):
@@ -170,22 +180,10 @@ class Motor:
         return self.path, self.current_action, updating
 
 
-def write_motor(path, action, messages) -> bool:
-    try:
-        with open(path, "w") as f:
-            f.write(action)
-            f.close()
-            return True
-    except Exception as e:
-        print(f"!!! Exception writing to motor: {e}")
-        messages.append("Motor communication error")
-        return False
+
 
 
 class Arm:
-    chunk = 1024
-    listening = True
-
     device_motors = [
         ["base", "basemotor", 30],
         ["grip", "gripmotor", 6],
@@ -194,8 +192,8 @@ class Arm:
         ["shoulder", "motor4", 30],
         ["light", "led", 30]
     ]
-
-    messages = []
+    chunk = 1024
+    listening = True
     paths = {}
     devices = {}
     paused = False
@@ -229,6 +227,7 @@ class Arm:
         for device_name, device_motors in self.devices.items():
             for motor in device_motors:
                 motor.check_motor()
+
     # Run the update on motors
     def update_motors(self):
         while True:
@@ -240,12 +239,9 @@ class Arm:
                     if motor.disable is not True:
                         (path, action, updated) = motor.update()
                         if updated:
-                            print("writing motor: " + path + " Action: " + action)
-                            ran = write_motor(path, action, self.messages)
+                            ran = motor.write_motor(path, action)
                             if ran is False:
                                 motor.disable = True
-                    if len(motor.messages) > 0:
-                        self.messages.append(motor.messages.pop(0))
             time.sleep(0.1)
 
     def stop_running_motors(self):
